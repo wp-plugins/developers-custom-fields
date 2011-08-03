@@ -208,8 +208,8 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				continue;
 			}
 			
-			// Check capability
-			if ( ( in_array( $request_type, array( 'post', 'attachment' ) ) && ! slt_cf_capability_check( $field['type'], $field['capabilities'], $object_id ) ) || ! slt_cf_capability_check( $field['type'], $field['capabilities'] ) ) {
+			// Check capability if in admin
+			if ( is_admin() && ( ( in_array( $request_type, array( 'post', 'attachment' ) ) && ! slt_cf_capability_check( $field['type'], $field['capabilities'], $object_id ) ) || ! slt_cf_capability_check( $field['type'], $field['capabilities'] ) ) ) {
 				$unset_fields[] = $field_key;
 				continue;
 			}

@@ -39,6 +39,12 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 							$value[] = $opt_value;
 					}
 
+				} else if ( $field['type'] == 'checkbox' && ! isset( $_POST[ $field_name ] ) ) {
+
+					/* Single checkbox, field not set - set value to "0"
+					*************************************************************/
+					$value = "0";
+
 				} else if ( isset( $_POST[ $field_name ] ) || ( $request_type == 'attachment' && isset( $_POST['attachments'][$object_id][$field_name] ) ) ) {
 
 					/* Other field types
@@ -64,7 +70,7 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 						$value = wpautop( $value );
 					} else if ( $field['type'] == "textile" ) {
 						// Textile formatting
-						$value = $slt_cf_simple_formatting( $value, 'html' );
+						$value = slt_cf_simple_formatting( $value, 'html', $field['autop'] );
 					}
 		
 				} // Field type if

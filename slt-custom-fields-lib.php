@@ -328,7 +328,7 @@ function slt_cf_params_type( $params, $type, $item_type, $item_data ) {
 
 /* Simple textile-style formatting codes
 ***************************************************************************************/
-function slt_cf_simple_formatting( $content, $output = "html" ) {
+function slt_cf_simple_formatting( $content, $output = "html", $autop = true ) {
 	if ( $output == "html" ) {
 		$regexes = array(
 			'%\*\*([^\*]+)\*\*%',
@@ -342,7 +342,8 @@ function slt_cf_simple_formatting( $content, $output = "html" ) {
 		);
 		$content = strip_tags( $content );
 		$content = preg_replace( $regexes, $replacements, $content );
-		$content = wpautop( $content );
+		if ( $autop )
+			$content = wpautop( $content );
 	} else {
 		$regexes = array(
 			'%<(/?)strong>%',
@@ -355,8 +356,9 @@ function slt_cf_simple_formatting( $content, $output = "html" ) {
 			'"$2":$1'
 		);
 		$content = preg_replace( $regexes, $replacements, $content );
+		if ( $autop )
+			$content = slt_cf_reverse_wpautop( $content );
 		$content = strip_tags( $content );
-		$content = slt_cf_reverse_wpautop( $content );
 	}
 	return $content;
 }
@@ -564,7 +566,7 @@ function slt_cf_gmap_shortcode( $atts ) {
 		'width'				=> 0,
 		'height'			=> 0,
 		'name'				=> ''
-	)), $atts );
+	), $atts ));
 	// Return a map
 	return slt_cf_gmap( 'output', $name, 'stored_data', $width, $height, null, '', false );
 }

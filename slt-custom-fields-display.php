@@ -184,7 +184,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				/* Single checkbox
 				*****************************************************************/
 				// Input
-				$input = $before_input . '<input type="checkbox" name="' . $field_name . '" id="' . $field_name . '" value="yes"';
+				$input = $before_input . '<input type="checkbox" name="' . $field_name . '" id="' . $field_name . '" value="1"';
 				if ( $field_value )
 					$input .= ' checked="checked"';
 				$input .=  ' />' . $after_input;
@@ -286,7 +286,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] ) echo ' onkeyup="document.getElementById(\'' . $field_name . '-charcounter\').value=this.value.length;"';
 				// Value
 				if ( $field['type'] == "textile" )
-					$field_value = $slt_cf_simple_formatting( $field_value, "textile" );
+					$field_value = slt_cf_simple_formatting( $field_value, "textile", $field['autop'] );
 				echo '>' . htmlspecialchars( $field_value ) . '</textarea>';
 				// Character counter
 				if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] )

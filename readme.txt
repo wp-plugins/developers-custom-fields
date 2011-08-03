@@ -3,8 +3,8 @@ Contributors: gyrus, adriantoll
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, custom fields, form, user, profile
 Requires at least: 3.0
-Tested up to: 3.1.2
-Stable tag: 0.6
+Tested up to: 3.2
+Stable tag: 0.6.1
 
 Provides theme developers with tools for managing post and user custom fields.
 
@@ -276,6 +276,12 @@ This shortcode, when used in a post's content, will display the map (if availabl
 The map container generated will have the ID `$name_map_container`.
 
 == Changelog ==
+= 0.6.1 =
+* Fixed bug where fields init check for capability to edit was being applied when a Google Map is displayed on the front end, so anyone not able to edit the field, including anyone not logged in, can't see the map
+* Fixed syntax bug in calls to textile formatting function
+* Made sure absent (unchecked) single checkboxes have a boolean false value stored, to avoid something that defaults to true getting re-checked after it's been unchecked
+* Changed single checkboxes to store value as "1" and "0" instead of "yes" and "no" ("0" evaluates to false, but "no" evaluates to true!)
+
 = 0.6 =
 * Added `attachment` as an possible value of the box `type` parameter - custom fields for attachments! (Though accepted field types are limited to text and select for now.) Includes many minor changes to plugin code. Thanks to Frank at http://wpengineer.com/2076/add-custom-field-attachment-in-wordpress/
 * Added `slt_cf_init` hook; changed initialization to allow dependent plugins to hook in
