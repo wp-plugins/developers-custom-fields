@@ -110,7 +110,7 @@ Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Develope
 * Added admin menu for database clean-up operations
 * Added `slt_cf_get_field_names` function
 * Added `$multiple_fields` parameter to `slt_cf_all_field_values` function, to deal with values stored in multiple fields
-* Added `$file_attach_to_post' parameter for `file` field types
+* Added `$file_attach_to_post` parameter for `file` field types
 * Set the `gmap` option `scrollwheel` to false (to prevent accidental zooming when scrolling the page)
 * Changed internal file naming
 * Upgraded jQuery UI Datepicker to 1.8.16
