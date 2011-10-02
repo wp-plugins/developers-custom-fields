@@ -43,47 +43,47 @@ A box is defined containing one of more custom fields, each with their own setti
 
 Say you've defined `film` as a Custom Post Type, and you want to create custom fields to set the director and writer for film posts. You would add something like this to your theme's functions.php (or indeed your plugin code):
 
-``&lt;?php
+<?php
 
 if ( function_exists( 'slt_cf_register_box') )
 	add_action( 'init', 'register_my_custom_fields' );
 
 function register_my_custom_fields() {
 	slt_cf_register_box( array(
-		'type'		=&gt; 'post',
-		'title'		=&gt; 'Credits',
-		'id'		=&gt; 'credits-box',
-		'context'	=&gt; 'normal',
-		'priority'	=&gt; 'high',
-		'fields'	=&gt; array(
+		'type'		=> 'post',
+		'title'		=> 'Credits',
+		'id'		=> 'credits-box',
+		'context'	=> 'normal',
+		'priority'	=> 'high',
+		'fields'	=> array(
 			array(
-				'name'			=&gt; 'director',
-				'label'			=&gt; 'Director',
-				'type'			=&gt; 'text',
-				'scope'			=&gt; array( 'film' ),
-				'capabilities'	=&gt; array( 'edit_posts' )
+				'name'			=> 'director',
+				'label'			=> 'Director',
+				'type'			=> 'text',
+				'scope'			=> array( 'film' ),
+				'capabilities'	=> array( 'edit_posts' )
 			),
 			array(
-				'name'			=&gt; 'writer',
-				'label'			=&gt; 'Writer',
-				'type'			=&gt; 'text',
-				'scope'			=&gt; array( 'film' ),
-				'capabilities'	=&gt; array( 'edit_posts' )
+				'name'			=> 'writer',
+				'label'			=> 'Writer',
+				'type'			=> 'text',
+				'scope'			=> array( 'film' ),
+				'capabilities'	=> array( 'edit_posts' )
 			)
 		)
 	));
 }
 
-?&gt;``
+?>
 
 Then, when you want to output these values in a loop:
 
-``&lt;?php
+<?php
 
 echo '<p>Director: ' . slt_cf_field_value( "director" ) . '</p>';
 echo '<p>Writer: ' . slt_cf_field_value( "writer" ) . '</p>';
 
-?&gt;``
+?>
 
 This is just the beginning! Check the [documentation](http://sltaylor.co.uk/wordpress/plugins/slt-custom-fields/docs/) for registering boxes and fields, especially the parameters for fields. The most immediately interesting parameters for fields to check out are: `type`, `scope`, `options_type`.
 
