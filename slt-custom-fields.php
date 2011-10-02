@@ -9,7 +9,7 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 0.6.1
+Version: 0.7
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 */
@@ -43,17 +43,60 @@ if ( ! function_exists( 'add_action' ) ) {
 
 /* Globals and constants
 ***************************************************************************************/
-define( 'SLT_CF_TITLE', 'Developer\'s Custom Fields' );
+define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', 'slt-custom-fields' ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
+define( 'SLT_CF_VERSION', '0.7' );
 global $slt_custom_fields;
 $slt_custom_fields = array();
 $slt_custom_fields['prefix'] = '_slt_';
 $slt_custom_fields['hide_default_custom_meta_box'] = true;
-$slt_custom_fields['css_url'] = plugins_url( 'slt-custom-fields.css', __FILE__ );
-$slt_custom_fields['datepicker_css_url'] = plugins_url( 'jquery-datepicker/smoothness/jquery-ui-1.7.3.custom.css', __FILE__ );
+$slt_custom_fields['datepicker_css_url'] = plugins_url( 'js/jquery-datepicker/smoothness/jquery-ui-1.8.16.custom.css', __FILE__ );
 $slt_custom_fields['datepicker_default_format'] = 'dd/mm/yy';
 $slt_custom_fields['boxes'] = array();
+if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG )
+	$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.css', __FILE__ );
+else
+	$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.min.css', __FILE__ );
+
+// Constants that can be overridden in wp-config.php
+if ( ! defined( 'SLT_CF_USE_GMAPS' ) )
+	define( 'SLT_CF_USE_GMAPS', true );
+if ( ! defined( 'SLT_CF_USE_FILE_SELECT' ) )
+	define( 'SLT_CF_USE_FILE_SELECT', true );
+
+/* Options stored in database
+***************************************************************************************/
+$slt_custom_fields['options'] = slt_cf_init_options();
+
+/**
+ * Initializes plugin options stored in database
+ * 
+ * @since	0.7
+ * @return	array	The current option values
+ */
+function slt_cf_init_options() {
+	// Defaults
+	$defaults = array(
+		'version'			=> SLT_CF_VERSION,
+		'alert-07-cleanup'	=> 1
+	);
+	// Try to get options from database
+	$options = get_option( 'slt_cf_options' );
+	$update_options = false;
+	if ( ! $options ) {
+		// No options - new installation, or upgrade from < 0.7
+		$options = $defaults;
+		$update_options = true;
+	} else if ( ! array_key_exists( 'version', $options ) || version_compare( $options['version'], SLT_CF_VERSION ) == -1 ) {
+		// No stored version, or stored version is lower than current version - upgrade
+		$options = array_merge( $defaults, $options );
+		$update_options = true;
+	}
+	if ( $update_options )
+		update_option( 'slt_cf_options', $options );
+	return $options;
+}
 
 /* Initialize
 ***************************************************************************************/
@@ -64,6 +107,8 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 
 	// Admin initialization
 	add_action( 'admin_init', 'slt_cf_admin_init' );
+	add_action( 'admin_menu', 'slt_cf_admin_menus' );
+	add_action( 'admin_notices', 'slt_cf_admin_notices' );
 
 	/* Display hooks
 	***************************************************************************************/
@@ -77,7 +122,7 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 	function slt_cf_display_post( $context, $object ) {
 		global $slt_custom_fields;
 		// Check for context based on object properties in case the are 'link' or 'comment' custom post types
-		if ( ! ( isset( $object->comment_ID ) || isset( $object->link_id ) ) ) {
+		if ( is_object( $object ) && ! ( isset( $object->comment_ID ) || isset( $object->link_id ) ) ) {
 			slt_cf_init_fields( 'post', $context, $object->ID );
 			if ( count( $slt_custom_fields['boxes'] ) )
 				slt_cf_add_meta_boxes( $context );
@@ -144,12 +189,13 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 	
 	/* Includes
 	***************************************************************************************/
-	require_once( 'slt-custom-fields-display.php' );
-	require_once( 'slt-custom-fields-save.php' );
+	require_once( 'slt-cf-admin.php' );
+	require_once( 'slt-cf-display.php' );
+	require_once( 'slt-cf-save.php' );
 
 }
 
 // Leave these functions available for AJAX requests
-require_once( 'slt-custom-fields-init.php' );
-require_once( 'slt-custom-fields-lib.php' );
+require_once( 'slt-cf-init.php' );
+require_once( 'slt-cf-lib.php' );
 

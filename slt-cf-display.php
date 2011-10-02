@@ -19,6 +19,25 @@ function slt_cf_add_meta_boxes( $post_type ) {
 	}
 }
 
+// Inline scripting for moving boxes above content
+add_action( 'admin_head-post.php', 'slt_cf_move_metaboxes' );
+add_action( 'admin_head-post-new.php', 'slt_cf_move_metaboxes' );
+function slt_cf_move_metaboxes() {
+	global $slt_custom_fields;
+	$output = array();
+	foreach ( $slt_custom_fields['boxes'] as $box_key => $box ) {
+		if ( array_key_exists( 'above_content', $box ) && $box['above_content'] )
+			$output[] = 'slt_cf_metaboxes_above_content.push( "' . slt_cf_prefix( 'post' ) . $box['id'] . '" );';
+	}
+	if ( ! empty( $output ) ) { ?>
+		<script type="text/javascript">//<![CDATA[
+		var slt_cf_metaboxes_above_content = [];
+		<?php foreach ( $output as $output_line ) { echo $output_line; ?>
+		<?php } ?>
+		//]]></script>
+	<?php }
+}
+
 // Output user profile sections
 function slt_cf_add_user_profile_sections( $user ) {
 	global $slt_custom_fields;
@@ -86,7 +105,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 	
 	// Description
 	if ( $slt_custom_fields['boxes'][ $box_key ][ 'description' ] )
-		echo '<p>' . esc_html( $slt_custom_fields['boxes'][ $box_key ][ 'description' ] ) . '</p>';
+		echo '<p>' . $slt_custom_fields['boxes'][ $box_key ][ 'description' ] . '</p>';
 		
 	// Loop through fields for this box
 	foreach ( $slt_custom_fields['boxes'][ $box_key ]['fields'] as $field ) {
@@ -102,7 +121,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 		} else {
 			// Get field value
 			$field_value = slt_cf_field_value( $field['name'], $request_type, $object->ID, '', '', false, $field['single'] );
-	}
+		}
 			
 		// Reverse autop?
 		if ( $field['autop'] )
@@ -122,12 +141,12 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				$multi_field_styles[] = 'width:' . $field['width'] . 'em';
 			}
 		} else {
-			if ( $field['width'] )
+			if ( $field['width'] && $field['type'] != 'wysiwyg' )
 				$input_styles[] = 'width:' . $field['width'] . 'em';
 			if ( $field['label_layout'] == 'block' )
 				$field_classes[] = 'label-block';
 		}
-		if ( $field['height'] )
+		if ( $field['height'] && $field['type'] != 'wysiwyg' )
 			$input_styles[] = 'height:' . $field['height'] . 'em';
 
 		// This will hide the label / legend
@@ -159,21 +178,21 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 		// Cloning
 		// [under development]
 		/*if ( $field['cloning'] ) {
-			$after_input = '<p class="slt-cf-clone-field"><a href="#" class="button">' . __( "Clone field" ) . '</a></p>' . $after_input;
+			$after_input = '<p class="slt-cf-clone-field"><a href="#" class="button">' . __( "Clone field", 'slt-custom-fields' ) . '</a></p>' . $after_input;
 		}*/
 		
 		// Description
 		$field_description = '';
 		if ( $field['type'] == 'textile' ) {
-			$field_description .= '<p class="description textile">' . __( 'You can apply the following simple formatting codes: <b>**bold**</b></span>&nbsp;&nbsp;<i>__italic__</i>&nbsp;&nbsp;&quot;Link text&quot;:http://domain.com' ) . '</p>';
+			$field_description .= '<p class="description textile">' . __( 'You can apply the following simple formatting codes: <b>**bold**</b></span>&nbsp;&nbsp;<i>__italic__</i>&nbsp;&nbsp;&quot;Link text&quot;:http://domain.com', 'slt-custom-fields' ) . '</p>';
 		} else if ( isset( $field['allowtags'] ) && is_array( $field['allowtags'] ) && count( $field['allowtags'] ) ) {
-			$field_description .= '<p class="description html">' . __( "You can use the following HTML tags:" );
+			$field_description .= '<p class="description html">' . __( "You can use the following HTML tags:", 'slt-custom-fields' );
 			foreach ( $field['allowtags'] as $tag )
 				$field_description .= '<code>&lt;' . $tag . '&gt;</code> ';
 			$field_description .= '</p>';
 		}
 		if ( isset( $field['autop'] ) && $field['autop'] )
-			$field_description .= '<p class="description autop">' . __( "Line and paragraph breaks will be maintained." ) . '</p>';
+			$field_description .= '<p class="description autop">' . __( "Line and paragraph breaks will be maintained.", 'slt-custom-fields' ) . '</p>';
 		if ( $field['description'] )
 			$field_description .= '<p class="description"><i>' . $field['description'] . '</i></p>';
 		
@@ -290,7 +309,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo '>' . htmlspecialchars( $field_value ) . '</textarea>';
 				// Character counter
 				if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] )
-					echo '<p>' . __( "Characters so far:" ) . ' <input type="text" id="' . $field_name . '-charcounter" disabled="disabled" style="width:4em;color:#000;" value="' . strlen( $field_value ) . '" /></p>';
+					echo '<p>' . __( "Characters so far:", 'slt-custom-fields' ) . ' <input type="text" id="' . $field_name . '-charcounter" disabled="disabled" style="width:4em;color:#000;" value="' . strlen( $field_value ) . '" /></p>';
 				// WYSIWYG
 				if ( $field['type'] == 'wysiwyg' ) { ?>
 					<script type="text/javascript">
@@ -327,7 +346,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
 				// Input
 				echo $before_input;
-				slt_cf_file_select_button( $field_name, $field_value, $field['file_button_label'], $field['preview_size'], $field['file_removeable'] );
+				slt_cf_file_select_button( $field_name, $field_value, $field['file_button_label'], $field['preview_size'], $field['file_removeable'], $field['file_attach_to_post'] );
 				echo $field_description;
 				echo $after_input;
 				break;
@@ -368,6 +387,14 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				}
 				echo $field_description;
 				echo $after_input;
+				break;
+			}
+						
+			case 'notice': {
+				/* Notice - no form field
+				*****************************************************************/
+				echo $before_label . '<h4 class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</h4>' . $after_label;
+				echo $before_input . $field_description . $after_input;
 				break;
 			}
 						

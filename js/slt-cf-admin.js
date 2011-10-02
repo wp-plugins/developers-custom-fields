@@ -2,9 +2,45 @@
 *********************************************************************/
 
 jQuery( document ).ready( function($) {
+	var i, box;
 
-	/* Cloning
+	/* Move meta boxes above content editor
 	*****************************************************************/
+	if ( typeof slt_cf_metaboxes_above_content != "undefined" ) {
+		for ( i in slt_cf_metaboxes_above_content ) {
+			box = $( 'div#' + slt_cf_metaboxes_above_content[ i ] ).detach();
+			box.insertAfter( '#titlediv' );
+		}
+	}
+
+	/* Handling notices
+	*****************************************************************/
+	
+	// 0.7 cleanup
+	if ( $( 'a#slt-cf-dismiss_alert-07-cleanup' ).length ) {
+		$( 'a#slt-cf-dismiss_alert-07-cleanup' ).click( function() {
+			$.post(
+				slt_custom_fields.ajaxurl,
+				{
+					'action': 'slt_cf_update_option',
+					'key': 'alert-07-cleanup',
+					'value': 0,
+					'update-option-nonce': slt_custom_fields.update_option_nonce
+				},
+				function( data ) {
+					if ( data == 'updated' ) {
+						$( 'a#slt-cf-dismiss_alert-07-cleanup' ).parents( 'div#message' ).fadeOut( 600, function() { $( this ).remove(); } );
+					} else {
+						alert( slt_custom_fields.update_option_fail );
+					}
+				}
+			);
+			return false;
+		});
+	}
+	
+	/* Cloning
+	****************************************************************
 	if ( $( "p.slt-cf-clone-field a" ).length ) {
 		$( 'p.slt-cf-clone-field a' ).click( function() {
 		
@@ -58,6 +94,6 @@ jQuery( document ).ready( function($) {
 			}
 		}	
 		return value;
-	}
+	}*/
 
 });

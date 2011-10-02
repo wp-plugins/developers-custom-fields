@@ -23,6 +23,11 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 		
 			// Loop through fields
 			foreach ( $box['fields'] as $field ) {
+				// Skip notices
+				if ( $field['type'] == 'notice' )
+					continue;
+					
+				// Initialize
 				$field_name = slt_cf_prefix( $request_type ) . $field['name'];
 				
 				// Process the submitted value
@@ -39,11 +44,11 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 							$value[] = $opt_value;
 					}
 
-				} else if ( $field['type'] == 'checkbox' && ! isset( $_POST[ $field_name ] ) ) {
+				} else if ( $field['type'] == 'checkbox' ) {
 
-					/* Single checkbox, field not set - set value to "0"
+					/* Single checkbox - set value to 1 or 0
 					*************************************************************/
-					$value = "0";
+					$value = ( isset( $_POST[ $field_name ] ) ? '1' : '0' );
 
 				} else if ( isset( $_POST[ $field_name ] ) || ( $request_type == 'attachment' && isset( $_POST['attachments'][$object_id][$field_name] ) ) ) {
 
@@ -91,8 +96,11 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 						// Add each new value separately
 						foreach ( $value as $value_item )
 							add_metadata( $metadata_type, $object_id, $field_name, $value_item, false );
+					} else if ( $value == '' ) {
+						// Delete field if it exists (and don't create it if it doesn't!)
+						delete_metadata( $request_type, $object_id, $field_name );
 					} else {
-						// Update single value
+						// Update single field
 						update_metadata( $metadata_type, $object_id, $field_name, $value );
 					}
 

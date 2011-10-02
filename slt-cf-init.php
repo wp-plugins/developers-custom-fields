@@ -2,49 +2,96 @@
 
 /* Initialize
 ***************************************************************************************/
+
+// Global initialization
 function slt_cf_init() {
 	global $slt_custom_fields;
 	// Register scripts and styles
 	wp_register_style( 'slt-cf-styles', $slt_custom_fields['css_url'] );
-	//wp_register_script( 'slt-cf-scripts', plugins_url( 'slt-custom-fields.js', __FILE__ ), array( 'jquery' ) );
-	wp_register_script( 'jquery-datepicker', plugins_url( 'jquery-datepicker/jquery-ui-1.7.3.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.7.3', true );
+	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) {
+		$slt_js_admin = plugins_url( 'js/slt-cf-admin.js', __FILE__ );
+		$slt_js_file_select = plugins_url( 'js/slt-cf-file-select.js', __FILE__ );
+		$slt_js_gmaps = plugins_url( 'js/slt-cf-gmaps.js', __FILE__ );
+	} else {
+		$slt_js_admin = plugins_url( 'js/slt-cf-admin.min.js', __FILE__ );
+		$slt_js_file_select = plugins_url( 'js/slt-cf-file-select.min.js', __FILE__ );
+		$slt_js_gmaps = plugins_url( 'js/slt-cf-gmaps.min.js', __FILE__ );
+	}
+	wp_register_script( 'slt-cf-scripts', $slt_js_admin, array( 'jquery' ) );
+	wp_register_script( 'jquery-datepicker', plugins_url( 'js/jquery-datepicker/jquery-ui-1.8.16.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.8.16', true );
 	wp_register_style( 'jquery-datepicker-smoothness', $slt_custom_fields['datepicker_css_url'] );
-	wp_register_script( 'slt-cf-file-select', plugins_url( 'slt-custom-fields-file-select.js', __FILE__ ), array( 'jquery', 'media-upload', 'thickbox' ) );
+	wp_register_script( 'slt-cf-file-select', $slt_js_file_select, array( 'jquery', 'media-upload', 'thickbox' ) );
 	wp_register_script( 'google-maps-api', SLT_CF_REQUEST_PROTOCOL . 'maps.google.com/maps/api/js?sensor=false' );
-	wp_register_script( 'slt-cf-gmaps', plugins_url( 'slt-custom-fields-gmaps.js', __FILE__ ), array( 'jquery-ui-core' ) );
+	wp_register_script( 'slt-cf-gmaps', $slt_js_gmaps, array( 'jquery-ui-core' ) );
 	// Google Maps for front and admin
-	wp_enqueue_script( 'google-maps-api' );
-	wp_enqueue_script( 'slt-cf-gmaps' );
+	if ( SLT_CF_USE_GMAPS ) {
+		wp_enqueue_script( 'google-maps-api' );
+		wp_enqueue_script( 'slt-cf-gmaps' );
+	}
 	// Generic hook, mostly for dependent plugins to hook to
 	// See: http://core.trac.wordpress.org/ticket/11308#comment:7
 	do_action( 'slt_cf_init' );
 }
 
-/* This stuff is currently hooked onto admin_init so header stuff is processed in time.
-Would be good to find a way of being more specific, i.e. only doing stuff when the fields valid
-for the current request demand individual items. Need to find a way of running slt_cf_init_fields
-at the admin_init stage - can it get the info supplied to its args at this stage?
-For now, a clumsy check against the requested file */
+// Admin initialization
 function slt_cf_admin_init() {
+	global $slt_cf_admin_notices, $slt_custom_fields, $pagenow;
 	$requested_file = basename( $_SERVER['SCRIPT_FILENAME'] );
-	if ( in_array( $requested_file, array( 'post-new.php', 'post.php', 'user-edit.php', 'profile.php' ) ) ) {
-		wp_enqueue_style( 'slt-cf-styles' );
-		//wp_enqueue_script( 'slt-cf-scripts' );
-		add_action( 'admin_print_footer_scripts', 'wp_tiny_mce', 25 );
-		wp_enqueue_script( 'jquery-datepicker' );
-		wp_enqueue_style( 'jquery-datepicker-smoothness' );
+	
+	// Decide now which notices to output
+	$slt_cf_admin_notices = array();
+	if ( $slt_custom_fields['options']['alert-07-cleanup'] && ! ( $pagenow == 'tools.php' && array_key_exists( 'page', $_GET ) && $_GET['page'] == 'slt_cf_data_tools' ) )
+		$slt_cf_admin_notices[] = 'alert-07-cleanup';
+
+	// Scripts and styles
+	wp_enqueue_style( 'slt-cf-styles' );
+	wp_enqueue_script( 'slt-cf-scripts' );
+	$script_vars = array( 'ajaxurl' => admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ) );
+	if ( in_array( 'alert-07-cleanup', $slt_cf_admin_notices ) ) {
+		$script_vars['update_option_nonce'] = wp_create_nonce( 'slt-cf-update-option' );
+		$script_vars['update_option_fail'] = __( 'There was a problem updating the option.', 'slt-custom-fields' );
 	}
+	wp_localize_script( 'slt-cf-scripts', 'slt_custom_fields', $script_vars );
+	add_action( 'admin_print_footer_scripts', 'wp_tiny_mce', 25 );
+	wp_enqueue_script( 'jquery-datepicker' );
+	wp_enqueue_style( 'jquery-datepicker-smoothness' );
 	if ( in_array( $requested_file, array( 'post-new.php', 'post.php' ) ) )
 		add_action( 'post_edit_form_tag' , 'slt_cf_file_upload_form' );
 	if ( in_array( $requested_file, array( 'user-edit.php', 'profile.php' ) ) )
 		add_action( 'user_edit_form_tag' , 'slt_cf_file_upload_form' );
+	// Google Maps
+	if ( SLT_CF_USE_GMAPS ) {
+		wp_localize_script( 'slt-cf-gmaps', 'slt_cf_gmaps', array(
+			'geocoder_label'	=> esc_html__( 'Find an address', 'slt-custom-fields' )
+		));
+	}
 	// File select
-	wp_enqueue_script( 'slt-cf-file-select' );
-	wp_enqueue_style( 'thickbox' );
-	wp_localize_script( 'slt-cf-file-select', 'slt_cf_file_select', array(
-		'ajaxurl'			=> admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ),
-		'text_select_file'	=> esc_html__( 'Select' )
-	));
+	if ( SLT_CF_USE_FILE_SELECT ) {
+		wp_enqueue_script( 'slt-cf-file-select' );
+		wp_enqueue_style( 'thickbox' );
+		wp_localize_script( 'slt-cf-file-select', 'slt_cf_file_select', array(
+			'ajaxurl'			=> admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ),
+			'text_select_file'	=> esc_html__( 'Select', 'slt-custom-fields' )
+		));
+		// Disable Flash uploader until we can get the JS working with it to insert "Select" button
+		add_filter( 'flash_uploader', '__return_false', 5 );		
+	}
+
+	// Deal with any form submissions for admin screen
+	if ( array_key_exists( 'slt-cf-form', $_POST ) && check_admin_referer( 'slt-cf-' . $_POST['slt-cf-form'], '_slt_cf_nonce' ) )
+		call_user_func( 'slt_cf_' . $_POST['slt-cf-form'] . '_form_process' );
+		
+}
+
+/**
+ * Add any admin menus
+ * 
+ * @since	0.7
+ * @return	void
+ */
+function slt_cf_admin_menus() {
+	// Database tools
+	add_submenu_page( 'tools.php', SLT_CF_TITLE . ' ' . __( 'database tools', 'slt-custom-fields' ), __( 'Custom Fields data', 'slt-custom-fields' ), 'update_core', 'slt_cf_data_tools', 'slt_cf_database_tools_screen' );
 }
 
 /* Initialize fields
@@ -72,7 +119,7 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 			$unset_boxes[] = $box_key;
 			continue;
 		}
-		
+
 		// Check if required parameters are present
 		if ( ! slt_cf_required_params( array( 'type', 'id', 'title' ), 'box', $box ) ) {		
 			$unset_boxes[] = $box_key;
@@ -98,43 +145,77 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 			$unset_boxes[] = $box_key;
 			continue;
 		}
+		
+		// Special context settings
+		if ( $box['context'] == 'above-content' ) {
+			$box['context'] = 'normal';
+			$box['priority'] = 'high';
+			$box['above_content'] = true;
+		}
 	
 		// Loop through fields
 		$unset_fields = array();
 		foreach ( $box['fields'] as $field_key => &$field ) {
+			
+			// Any defaults that need setting early
+			if ( ! array_key_exists( 'type', $field ) )
+				$field['type'] = 'text';
 		
 			// Check if required parameters are present
-			if ( ! slt_cf_required_params( array( 'name', 'label', 'scope' ), 'field', $field ) ) {		
+			$required_params = array( 'name' );
+			if ( $field['type'] != 'notice' )
+				$required_params[] = 'label';
+			if ( array_key_exists( 'options_type', $field ) && $field['options_type'] == 'terms' )
+				$required_params[] = 'options_query';
+			if ( ! slt_cf_required_params( $required_params, 'field', $field ) ) {		
 				$unset_fields[] = $field_key;
 				continue;
 			}
 
 			// If the name is the same as the box id, this can cause problems
 			if ( $field['name'] == $box['id'] ) {
-				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> Box <b>' . $box['id'] . '</b> has a field with the same name as the box id, which can cause problems', E_USER_WARNING );
+				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> Box <b>' . $box['id'] . '</b> has a field with the same name as the box id, which can cause problems.', E_USER_WARNING );
+				$unset_fields[] = $field_key;
+				continue;
+			}
+			
+			// Using Google Maps?
+			if ( $field['type'] == 'gmap' && ! SLT_CF_USE_GMAPS ) {
+				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> The field <b>' . $field['name'] . '</b> is a <code>gmap</code> type field, but <code>SLT_CF_USE_GMAPS</code> is set to disable Google Maps.', E_USER_WARNING );
+				$unset_fields[] = $field_key;
+				continue;
+			}
+			
+			// Using File Select?
+			if ( $field['type'] == 'file' && ! SLT_CF_USE_FILE_SELECT ) {
+				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> The field <b>' . $field['name'] . '</b> is a <code>file</code> type field, but <code>SLT_CF_USE_FILE_SELECT</code> is set to disable the file select functionality.', E_USER_WARNING );
 				$unset_fields[] = $field_key;
 				continue;
 			}
 			
 			// File field type no longer needs the File Select plugin
 			if ( $field['type'] == 'file' && function_exists( 'slt_fs_button' )  )
-				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> File upload fields no longer need the SLT File Select plugin - you can remove it if you want! If you use that plugin\'s functionality elsewhere, you can now just call the functions provided by this Custom Fields plugin.', E_USER_NOTICE );
+				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> File upload fields no longer needs the SLT File Select plugin - you can remove it if you want! If you use that plugin\'s functionality elsewhere, you can now just call the functions provided by this Custom Fields plugin.', E_USER_NOTICE );
 					
 			// Set defaults
 			$field_defaults = array(
 				'cloning'					=> false,
+				'label'						=> '',
+				'scope'						=> array(),
 				'label_layout'				=> 'block',
 				'hide_label'				=> false,
 				'file_button_label'			=> __( "Select file", "slt-custom-fields" ),
 				'file_removeable'			=> true,
+				'file_attach_to_post'		=> true,
 				'input_prefix'				=> '',
 				'input_suffix'				=> '',
 				'description'				=> '',
-				'type'						=> 'text',
 				'default'					=> null,
 				'multiple'					=> false,
-				'options'					=> array(),
 				'options_type'				=> 'static',
+				'options'					=> array(),
+				'options_query'				=> array(),
+				'group_options'				=> false,
 				'no_options'				=> SLT_CF_NO_OPTIONS,
 				'exclude_current'			=> true,
 				'single'					=> true,
@@ -151,8 +232,18 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'location_marker'			=> true,
 				'gmap_type'					=> 'roadmap'
 			);
+			// Defaults dependent on request type
 			switch ( $request_type ) {
-				case 'post':
+				case 'post': {
+					$field_defaults['capabilities'] = array( 'edit_posts' );
+					if ( empty( $field_defaults['scope'] ) ) {
+						// All public custom post types, plus posts and pages
+						$field_defaults['scope'] = get_post_types( array( 'public' => true, '_builtin' => false ), 'names', 'and' );
+						$field_defaults['scope'][] = 'post';
+						$field_defaults['scope'][] = 'page';
+					}
+					break;
+				}
 				case 'attachment': {
 					$field_defaults['capabilities'] = array( 'edit_posts' );
 					break;
@@ -173,14 +264,8 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 					break;
 				}
 				case 'users': {
-					if ( ! array_key_exists( 'options_query', $field ) || empty( $field['options_query'] ) ) {
+					if ( empty( $field['options_query'] ) )
 						$field['options_query'] = array_keys( $wp_roles->role_names );
-					}
-					break;
-				}
-				default: {
-					if ( ! array_key_exists( 'options_query', $field ) )
-						$field['options_query'] = array();
 					break;
 				}
 			}
@@ -192,7 +277,13 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 					if ( ! $field['height'] )
 						$field['height'] = 300;
 					if ( ! $field['default'] || ! is_array( $field['default'] ) )
-						$field['default'] = array();
+						$field['default'] = array(
+							"centre_latlng"	=> "52.337946593485135,-1.667382812500029",
+							"zoom"			=> "6",
+							"marker_latlng"	=> "52.24386921477694,-0.9203125000000227",
+							"bounds_sw"		=> "50.27802587971423,-7.160546875000023",
+							"bounds_ne"		=> "54.306194393010095,3.8257812499999773"
+						);
 					break;
 				}
 			}
@@ -207,15 +298,15 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				$unset_fields[] = $field_key;
 				continue;
 			}
-			
-			// Check capability if in admin
-			if ( is_admin() && ( ( in_array( $request_type, array( 'post', 'attachment' ) ) && ! slt_cf_capability_check( $field['type'], $field['capabilities'], $object_id ) ) || ! slt_cf_capability_check( $field['type'], $field['capabilities'] ) ) ) {
-				$unset_fields[] = $field_key;
-				continue;
-			}
 
 			// Check scope
 			if ( ! slt_cf_check_scope( $field, $request_type, $scope, $object_id ) ) {
+				$unset_fields[] = $field_key;
+				continue;
+			}
+			
+			// Check capability if in admin
+			if ( is_admin() && ( ( in_array( $request_type, array( 'post', 'attachment' ) ) && ! slt_cf_capability_check( $field['type'], $field['capabilities'], $object_id ) ) || ! slt_cf_capability_check( $field['type'], $field['capabilities'] ) ) ) {
 				$unset_fields[] = $field_key;
 				continue;
 			}
@@ -330,6 +421,12 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 						$posts_query = new WP_Query( $field['options_query'] );
 						$posts = $posts_query->posts;
 						$field['options'] = array();
+						/** TODO
+						// Hierarchical?
+						if ( $field['hierarchical_options'] && is_string( $field['options_query']['post_type'] ) && is_post_type_hierarchical( $field['options_query']['post_type'] ) ) {
+							
+						}
+						*/
 						$current_category = array();
 						foreach ( $posts as $post_data ) {
 							if ( $field[ 'group_options' ] ) {
@@ -371,6 +468,24 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 						break;
 					}
 
+					case 'terms': {
+						// Get terms
+						$args = $field['options_query'];
+						$taxonomies = $args['taxonomies'];
+ 						$field['options'] = array();
+						/** TODO
+					 	if ( $field['hierarchical_options'] ) {
+							$field['options_query']['hierarchical'] = true;
+							slt_cf_hierarchical_terms( $field, '&nbsp;&nbsp;&nbsp;', @intval( $args['child_of'] ) );
+						} else
+						*/
+						if ( ! is_wp_error( $option_terms = get_terms( $taxonomies, $args ) ) ) {
+							foreach ( $option_terms as $option_term )
+								$field['options'][$option_term->name] = $option_term->term_id;
+						}
+ 						break;
+					}
+
 					default: {
 						// Run filter for custom option types
 						$field['options'] = apply_filters( 'slt_cf_populate_options', $field['options'], $request_type, $scope, $object_id, $field );
@@ -399,4 +514,3 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 	$slt_custom_fields['boxes'] = apply_filters( 'slt_cf_init_boxes', $slt_custom_fields['boxes'] );
 
 }
-

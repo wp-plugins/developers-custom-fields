@@ -6,10 +6,13 @@ jQuery( document ).ready( function( $ ) {
 
 		// Invoke Media Library interface on button click
 		$( '.slt-cf-fs-button' ).click( function() {
+			var upload_url;
 			$( 'html' ).addClass( 'File' );
-			$field_id = $( this ).siblings( 'input.slt-cf-fs-value' ).attr( 'id' );
-			$post_id = $( this ).parents( 'form' ).find( 'input[name=post_ID]' ).attr( 'value' );
-			tb_show( '', 'media-upload.php?slt_cf_fs_field=' + $field_id + '&type=file&post_id=' + $post_id + '&TB_iframe=true' );
+			upload_url = 'media-upload.php?slt_cf_fs_field=' + $( this ).siblings( 'input.slt-cf-fs-value' ).attr( 'id' ) + '&type=file';
+			if ( $( this ).siblings( 'input.slt-cf-fs-attach-to-post' ).attr( 'value' ) == '1' && $( this ).parents( 'form' ).find( 'input[name=post_ID]' ).length )
+				upload_url += '&post_id=' + $( this ).parents( 'form' ).find( 'input[name=post_ID]' ).attr( 'value' );
+			upload_url += '&TB_iframe=true';
+			tb_show( '', upload_url );
 			return false;
 		});
 	
@@ -24,10 +27,10 @@ jQuery( document ).ready( function( $ ) {
 	
 	// Actions for the Media Library overlay
 	if ( $( "body" ).attr( 'id' ) == 'media-upload' ) {
+		var parent_doc, parent_src, parent_src_vars, current_tab, select_button;
 		
 		// Make sure it's an overlay invoked by this plugin
-		var parent_doc, parent_src, parent_src_vars, current_tab;
-		var select_button = '<a href="#" class="slt-cf-fs-insert button-secondary">' + slt_cf_file_select.text_select_file + '</a>';
+		select_button = '<a href="#" class="slt-cf-fs-insert button-secondary">' + slt_cf_file_select.text_select_file + '</a>';
 		parent_doc = parent.document;
 		parent_src = parent_doc.getElementById( 'TB_iframeContent' ).src;
 		parent_src_vars = slt_fs_get_url_vars( parent_src );
@@ -38,14 +41,17 @@ jQuery( document ).ready( function( $ ) {
 			switch ( current_tab ) {
 				case 'tab-type': {
 					// File upload
-					$( 'table.describe tbody tr:not(.submit)' ).remove();
-					$( 'table.describe tr.submit td.savesend input' ).replaceWith( select_button );
+					$( 'table.describe tbody tr:not(.submit), a.wp-post-thumbnail' ).remove();
+					if ( $( 'table.describe tr.submit td.savesend input' ).length )
+						$( 'table.describe tr.submit td.savesend input' ).replaceWith( select_button );
+					else
+						$( 'table.describe tr.submit td.savesend' ).prepend( select_button );
 					break;
 				}
 				case 'tab-gallery':
 				case 'tab-library': {
 					// Gallery / Media Library
-					$( '#sort-buttons > span,th.order-head,#media-items .media-item div.menu_order,#media-items .media-item a.toggle' ).remove();
+					$( '#sort-buttons > span,th.order-head,#media-items .media-item div.menu_order,#media-items .media-item a.toggle, #gallery-settings' ).remove();
 					$( '#media-items .media-item' ).each( function() {
 						$( this ).prepend( select_button );
 					});
@@ -81,8 +87,9 @@ jQuery( document ).ready( function( $ ) {
 // Parse URL variables
 // See: http://papermashup.com/read-url-get-variables-withjavascript/
 function slt_fs_get_url_vars( s ) {
-	var vars = {};
-	var parts = s.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+	var vars, parts;
+	vars = {};
+	parts = s.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
 	 	vars[key] = value;
 	});
 	return vars;

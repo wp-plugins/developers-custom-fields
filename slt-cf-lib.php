@@ -4,9 +4,30 @@
 ***************************************************************************************/
 function slt_cf_setting( $key, $value ) {
 	global $slt_custom_fields;
-	if ( is_string( $key ) ) {
+	if ( is_string( $key ) )
 		$slt_custom_fields[ $key ] = $value;
+}
+
+/* Updating database options
+***************************************************************************************/
+
+// Update option
+function slt_cf_update_option( $key, $value ) {
+	global $slt_custom_fields;
+	$options = get_option( 'slt_cf_options' );
+	$options[ $key ] = $value;
+	update_option( 'slt_cf_options', $options );
+	$slt_custom_fields['options'] = $options;
+}
+
+// Update via AJAX
+add_action( 'wp_ajax_slt_cf_update_option', 'slt_cf_update_option_ajax' );
+function slt_cf_update_option_ajax() {
+	if ( array_key_exists( 'key', $_REQUEST ) && $_REQUEST['key'] && array_key_exists( 'value', $_REQUEST ) && wp_verify_nonce( $_REQUEST['update-option-nonce'], 'slt-cf-update-option' ) ) {
+		slt_cf_update_option( $_REQUEST['key'], $_REQUEST['value'] );
+		echo 'updated';
 	}
+	exit( 0 );
 }
 
 /* Register a box
@@ -25,7 +46,7 @@ function slt_cf_field_key( $key, $object_type = 'post' ) {
 
 /* Return the right prefix (attachment postmeta shouldn't start with an underscore)
 ***************************************************************************************/
-function slt_cf_prefix( $object_type ) {
+function slt_cf_prefix( $object_type = 'post' ) {
 	global $slt_custom_fields;
 	$prefix = $slt_custom_fields['prefix'];
 	if ( $object_type == 'attachment' && substr( $prefix, 0, 1 ) == '_' )
@@ -57,7 +78,7 @@ function slt_cf_field_value( $key, $type = 'post', $id = 0, $before = '', $after
 
 /* Get all custom field values set by this plugin
 ***************************************************************************************/
-function slt_cf_all_field_values( $type = 'post', $id = 0 ) {
+function slt_cf_all_field_values( $type = 'post', $id = 0, $multiple_fields = array() ) {
 	global $slt_custom_fields;
 	$prefix = slt_cf_prefix( $type );
 	$values = array();
@@ -79,12 +100,15 @@ function slt_cf_all_field_values( $type = 'post', $id = 0 ) {
 			break;
 		}
 	}
-	foreach ( $values as $key => $value ) {
-		if ( strlen( $key ) > strlen( $prefix ) && substr( $key, 0, strlen( $prefix ) ) == $prefix ) {
-			// Currently only catering for single values per field - change with cloning????
-			if ( is_array( $value ) )
-				$value = $value[0];
-			$all_values[ preg_replace( '#' . $prefix . '#', '', $key, 1 ) ] = $value;
+	if ( is_array( $values ) ) {
+		foreach ( $values as $key => $value ) {
+			if ( strlen( $key ) > strlen( $prefix ) && substr( $key, 0, strlen( $prefix ) ) == $prefix ) {
+				$key_no_prefix = preg_replace( '#' . $prefix . '#', '', $key, 1 );
+				// Only keep specified fields as arrays
+				if ( is_array( $value ) && ! in_array( $key_no_prefix, $multiple_fields ) )
+					$value = $value[0];
+				$all_values[ $key_no_prefix ] = $value;
+			}
 		}
 	}
 	return array_map( 'maybe_unserialize', $all_values );
@@ -152,16 +176,41 @@ function slt_cf_get_current_fields( $type = 'post', $id = 0 ) {
 	return $fields;
 }
 
+/* Gather names of all field
+***************************************************************************************/
+function slt_cf_get_field_names( $objects = array(), $types = array(), $add_prefix = true ) {
+	global $slt_custom_fields;
+	$names = array();
+	foreach ( $slt_custom_fields['boxes'] as $box ) {
+		$common_types = array_intersect( $objects, (array) $box['type'] );
+		if ( empty( $objects ) || ! empty( $common_types ) ) {
+			foreach ( $box['fields'] as $field ) {
+				if ( empty( $types ) || in_array( $field['type'], $types ) ) {
+					if ( $add_prefix )
+						$names[] = slt_cf_field_key( $field['name'], $box['type'] ) ;
+					else
+						$names[] = $field['name'];
+				}
+			}
+		}
+	}
+	return $names;
+}
+
 /* Check field scope
 ***************************************************************************************/
 function slt_cf_check_scope( $field, $request_type, $request_scope, $object_id ) {
 	global $wp_roles;
 	$scope_match = false;
-	if ( $request_type == 'attachment' && empty( $field['scope'] ) ) {
-		// Match all attachments
+
+	if ( ( in_array( $request_type, array( 'attachment', 'user' ) ) ) && empty( $field['scope'] ) ) {
+
+		// Match all attachments and users if there's an empty scope
 		$scope_match = true;
+
 	} else {
-		// All other instances need an explicit match
+
+		// Test for an explicit match
 		foreach ( $field['scope'] as $scope_key => $scope_value ) {
 			if ( is_string( $scope_key ) && $request_type == 'post' && $scope_key == 'template' ) {
 				// Page template matching
@@ -209,7 +258,17 @@ function slt_cf_check_scope( $field, $request_type, $request_scope, $object_id )
 					break;
 			}
 		}
+		
 	}
+
+	// Any post exceptions
+	if ( in_array( $request_type, array( 'post', 'attachment' ) ) && array_key_exists( 'except_posts', $field['scope'] ) && $scope_match && in_array( $object_id, $field['scope']['except_posts'] ) )
+		$scope_match = false;
+
+	// Any user exceptions
+	if ( $request_type == 'user' && array_key_exists( 'except_users', $field['scope'] ) && $scope_match && in_array( $object_id, $field['scope']['except_users'] ) )
+		$scope_match = false;
+
 	return $scope_match;
 }
 
@@ -251,7 +310,7 @@ function slt_cf_default_id( $type = 'post', $id = 0 ) {
 			case 'attachment': {
 				// Post ID
 				global $post;
-				if ( is_object( $post ) )
+				if ( is_object( $post ) && property_exists( $post, 'ID' ) )
 					$id = $post->ID;
 				break;
 			}
@@ -386,14 +445,16 @@ function slt_cf_reverse_date( $date_string, $sep = '/', $to_timestamp = false ) 
 		$date = mktime( 12, 0, 0, $date_parts[1], $date_parts[2], $date_parts[0] );
 	else
 		$date = implode( $sep, array_reverse( $date_parts ) );
-	return $date	;
+	return $date;
 }
 
 /* Google Map functions
 ***************************************************************************************/
 
+if ( SLT_CF_USE_GMAPS ) :
+	
 // Output a map (for display or input)
-function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $width = 0, $height = 0, $location_marker = null, $map_type_id = '', $echo = true, $js_callback = '', $required = true ) {
+function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $width = 0, $height = 0, $location_marker = null, $map_type_id = '', $echo = true, $js_callback = '', $required = true, $object_type = 'post' ) {
 	$output = '';
 	$using_default_name = false;
 	static $map_count = 1;
@@ -402,6 +463,8 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 	if ( empty( $name ) ) {
 		$name = 'gmap_' . $map_count;
 		$using_default_name = true;
+	} else if ( in_array( $object_type, array( 'post', 'user' ) ) && ( strlen( $name ) < slt_cf_prefix( $object_type ) || substr( $name, 0, strlen( slt_cf_prefix( $object_type ) ) ) != slt_cf_prefix( $object_type ) ) ) {
+		$name = slt_cf_field_key( $name, $object_type );
 	}
 	if ( $location_marker === null )
 		$location_marker = 'true';
@@ -409,7 +472,9 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 		$location_marker = $location_marker ? 'true' : 'false';	
 	if ( empty( $map_type_id ) )
 		$map_type_id = 'roadmap';
-	if ( $type == 'output' && ( empty( $values ) || $values == 'stored_data' ) ) {
+		
+	// Values
+	if ( $type == 'output' && $object_type != 'custom' && ( empty( $values ) || $values == 'stored_data' ) ) {
 		// Try to initalize values from current meta
 		if ( is_singular() ) {
 			global $post;
@@ -424,6 +489,7 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 			$scope = array_shift( $roles );
 			$object_id = $author;
 		}
+		// Initialize fields - this function checks to make sure it's only called once per request
 		slt_cf_init_fields( $request_type, $scope, $object_id );
 		// Get fields for current item
 		$cf_item_fields = slt_cf_get_current_fields();
@@ -454,9 +520,9 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 			$values = array();
 		// Defaults if there's no field
 		if ( empty( $width ) )
-			$width = 310;	
+			$width = 500;	
 		if ( empty( $height ) )
-			$height = 460;	
+			$height = 300;	
 	}
 
 	// Check values is an array
@@ -478,7 +544,7 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 		$values_defaults['bounds_ne'] = '61.14529476347399,2.2876953124999773';
 	}
 	$values = wp_parse_args( $values, $values_defaults );
-	
+
 	// Sanitize
 	foreach ( $values as $key => $value )
 		$values[ $key ] = str_replace( ' ', '', $value );
@@ -493,23 +559,7 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 		if ( ! $required ) {
 			$initial_display_value = isset( $values["display"] ) ? $values["display"] : '0';
 
-			$output .= '<p>' . __( 'Use location map?' ) . ' <input class="' . $id . '_toggle_display yes" type="radio" name="' . $name . '[display]" id="' . $id . '_display_yes" value="1"' . checked( $initial_display_value, '1', false ) . ' /> <label for="' . $id . '_toggle_display_yes">' . __( 'Yes' ) . '</label> <input class="' . $id . '_toggle_display no" type="radio" name="' . $name . '[display]" id="' . $id . '_display_no" value="0"' . checked( $initial_display_value, '0', false ) . ' /> <label for="' . $id . '_display_no">' . __( 'No' ) . '</label></p>';
-
-			$output .= <<<MAPJS
-<script type="text/javascript">
-jQuery( document ).ready( function($) {
-	$( "input.{$id}_toggle_display" ).change( function() {
-		if ( $( this ).hasClass( "yes" ) ) {
-			$( "#{$id}_wrapper" ).slideDown();
-			google.maps.event.trigger( slt_cf_maps["{$id}"]["map"], "resize" );
-			//slt_cf_maps["{$id}"]["map"].setCenter( center_latlng );
-		} else {
-			$( "#{$id}_wrapper" ).slideUp();
-		}
-	});
-})
-</script>
-MAPJS;
+			$output .= '<p>' . __( 'Use location map?', 'slt-custom-fields' ) . ' <input class="gmap_toggle_display yes" type="radio" name="' . $name . '[display]" id="' . $id . '_display_yes" value="1"' . checked( $initial_display_value, '1', false ) . ' /> <label for="' . $id . '_toggle_display_yes">' . __( 'Yes' ) . '</label> <input class="gmap_toggle_display no" type="radio" name="' . $name . '[display]" id="' . $id . '_display_no" value="0"' . checked( $initial_display_value, '0', false ) . ' /> <label for="' . $id . '_display_no">' . __( 'No' ) . '</label></p>';
 
 			// Wrapper
 			$output .= '<div id="' . $id . '_wrapper"';
@@ -520,7 +570,8 @@ MAPJS;
 		}
 
 		// Geocoder
-		$output .= '<p class="gmap-address"><label for="' . $id . '_address">' . __( 'Find an address' ) . ':</label> <input type="text" id="' . $id . '_address" name="' . $id . '_address" value="" class="regular-text" /></p>';
+		// Currently included via JS
+		//$output .= '<p class="gmap-address"><label for="' . $id . '_address">' . __( 'Find an address', 'slt-custom-fields' ) . ':</label> <input type="text" id="' . $id . '_address" name="' . $id . '_address" value="" class="regular-text" /></p>';
 
 	}
 
@@ -537,7 +588,7 @@ MAPJS;
 	
 	// JavaScript
 	$output .= '<script type="text/javascript">' . "\n";
-	$output .= "jQuery( document ).ready( function( $ ) {\n";
+	$output .= "jQuery( document ).ready( function($) {\n";
 	$output .= "slt_cf_gmap_init( '{$id}', '{$type}', {$location_marker}, '{$values['marker_latlng']}', '{$values['centre_latlng']}', {$values['zoom']}, '{$map_type_id}'";
 	// Callback?
 	if ( $js_callback )
@@ -571,16 +622,33 @@ function slt_cf_gmap_shortcode( $atts ) {
 	return slt_cf_gmap( 'output', $name, 'stored_data', $width, $height, null, '', false );
 }
 
+endif;
+
 /* File Select button functions
 ***************************************************************************************/
 
-// Output button
-function slt_cf_file_select_button( $name, $value, $label = 'Select file', $preview_size = 'thumbnail', $removable = true ) { ?>
+if ( SLT_CF_USE_FILE_SELECT ) :
+
+/**
+ * Output file select button
+ * 
+ * @since 0.6
+ * 
+ * @param string	$name			A name for the input tag.
+ * @param int		$value			The current value for the field (a media attachment ID).
+ * @param string	$label			A label for the field.
+ * @param string	$preview_size	The size (from available WordPress image sizes) for the preview, if an image.
+ * @param bool		$removable		Should it be possible to remove the file?
+ * @param bool		$attach_to_post	When uploaded, should the file be attached to the current post (if this button is on a post edit screen)?
+ * @return void
+ */
+function slt_cf_file_select_button( $name, $value = 0, $label = 'Select file', $preview_size = 'thumbnail', $removable = true, $attach_to_post = true ) { ?>
 	<div>
 		<input type="button" class="button-secondary slt-cf-fs-button" value="<?php echo esc_attr( $label ); ?>" />
 		<?php if ( $value && $removable ) { ?>
-			&nbsp;&nbsp;<input type="checkbox" name="<?php echo esc_attr( $name ); ?>_remove" value="1" class="slt-cf-fs-remove" /> <label for="<?php echo esc_attr( $name ); ?>_remove"><?php _e( 'Remove' ); ?></label>
+			&nbsp;&nbsp;<input type="checkbox" name="<?php echo esc_attr( $name ); ?>_remove" value="1" class="slt-cf-fs-remove" /> <label for="<?php echo esc_attr( $name ); ?>_remove"><?php _e( 'Remove', 'slt-custom-fields' ); ?></label>
 		<?php } ?>
+		<input type="hidden" value="<?php echo $attach_to_post ? '1' : '0'; ?>" name="<?php echo esc_attr( $name ); ?>_attach_to_post" id="<?php echo esc_attr( $name ); ?>_attach_to_post" class="slt-cf-fs-attach-to-post" />
 		<input type="hidden" value="<?php echo esc_attr( $value ); ?>" name="<?php echo esc_attr( $name ); ?>" id="<?php echo esc_attr( $name ); ?>" class="slt-cf-fs-value" />
 		<input type="hidden" value="<?php echo esc_attr( $preview_size ); ?>" name="<?php echo esc_attr( $name ); ?>_preview-size" id="<?php echo esc_attr( $name ); ?>_preview-size" class="slt-fs-preview-size" />
 	</div>
@@ -615,3 +683,5 @@ function slt_cf_file_select_get_file_ajax() {
 	}
 	die();
 }
+
+endif;
