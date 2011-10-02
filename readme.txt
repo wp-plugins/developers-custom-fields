@@ -6,7 +6,7 @@ Requires at least: 3.0
 Tested up to: 3.2.1
 Stable tag: 0.7
 
-Provides developers with tools for managing post and user custom fields.
+Provides developers with powerful and flexible tools for managing post and user custom fields.
 
 == Description ==
 This plugin is aimed at theme developers who want a set of tools that allows them to easily and flexibly define custom fields for all post types, and for user profiles.
