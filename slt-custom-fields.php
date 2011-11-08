@@ -9,7 +9,7 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 0.7
+Version: 0.7.1
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 */
@@ -43,11 +43,12 @@ if ( ! function_exists( 'add_action' ) ) {
 
 /* Globals and constants
 ***************************************************************************************/
+global $slt_custom_fields, $wp_version;
 define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', 'slt-custom-fields' ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
-define( 'SLT_CF_VERSION', '0.7' );
-global $slt_custom_fields;
+define( 'SLT_CF_VERSION', '0.7.1' );
+define( 'SLT_CF_WP_IS_GTE_3_3', version_compare( round( $wp_version, 1 ), '3.3' ) >= 0 );
 $slt_custom_fields = array();
 $slt_custom_fields['prefix'] = '_slt_';
 $slt_custom_fields['hide_default_custom_meta_box'] = true;
@@ -91,6 +92,8 @@ function slt_cf_init_options() {
 	} else if ( ! array_key_exists( 'version', $options ) || version_compare( $options['version'], SLT_CF_VERSION ) == -1 ) {
 		// No stored version, or stored version is lower than current version - upgrade
 		$options = array_merge( $defaults, $options );
+		// Force stored version to new version
+		$options['version'] = SLT_CF_VERSION;
 		$update_options = true;
 	}
 	if ( $update_options )

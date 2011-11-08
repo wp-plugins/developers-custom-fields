@@ -3,8 +3,8 @@ Contributors: gyrus, adriantoll
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.0
-Tested up to: 3.2.1
-Stable tag: 0.7
+Tested up to: 3.3-beta2
+Stable tag: 0.7.1
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
@@ -98,6 +98,12 @@ Note that the internal Google Maps and file selection functionality is designed 
 Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues). If you're not sure if you've found a genuine issue or not, please start a thread on the [WP forum](http://wordpress.org/tags/developers-custom-fields).
 
 == Changelog ==
+= 0.7.1 =
+* For 3.3 and above, switched inclusion of `wysiwyg` field to use new `wp_editor` function; also included `wysiwyg_settings` parameter to be passed to `wp_editor` 
+* Changed the way the user ID is set up in `slt_cf_default_id` - now it tries to get ID of author whose archive page is being shown first
+* Fixed bug in `slt_cf_init_options`; new version in upgrade wasn't being stored
+* Fixed problem with Gmap shortcode not working even when `SLT_CF_USE_GMAPS` is set to `true`
+
 = 0.7 =
 * Added `terms` as an `options_type` for populating multiple value fields with taxonomy terms
 * Added `autop` parameter to `slt_cf_simple_formatting` function
@@ -105,7 +111,7 @@ Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Develope
 * Made the field `scope` parameter default to an empty array, which will apply the field to all items within the box's scope
 * Added `notice` field type for text-only notices to the user
 * Changed `slt_cf_gmap` so you can pass the name of the field without the prefix, which will be automatically added
-* Added `above-content` settings for the box `context` parameter
+* Added an `above-content` setting for the box `context` parameter
 * Added `except_posts` and `except_users` options to the `scope` field parameter
 * Added admin menu for database clean-up operations
 * Added `slt_cf_get_field_names` function

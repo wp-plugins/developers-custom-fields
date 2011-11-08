@@ -176,7 +176,7 @@ function slt_cf_get_current_fields( $type = 'post', $id = 0 ) {
 	return $fields;
 }
 
-/* Gather names of all field
+/* Gather names of all fields
 ***************************************************************************************/
 function slt_cf_get_field_names( $objects = array(), $types = array(), $add_prefix = true ) {
 	global $slt_custom_fields;
@@ -304,20 +304,31 @@ function slt_cf_order_posts( $a, $b ) {
 /* Manage default object IDs
 ***************************************************************************************/
 function slt_cf_default_id( $type = 'post', $id = 0 ) {
+	global $post;
 	if ( ! $id ) {
 		switch ( $type ) {
 			case 'post':
 			case 'attachment': {
 				// Post ID
-				global $post;
 				if ( is_object( $post ) && property_exists( $post, 'ID' ) )
 					$id = $post->ID;
 				break;
 			}
 			case 'user': {
 				// User ID
-				wp_get_current_user();
-				$id = $current_user->ID;
+				if ( is_author() ) {
+					// Author archive page
+					$user = null;
+					if ( get_query_var( 'author_name' ) )
+						$user = get_user_by( 'slug', get_query_var( 'author_name' ) );
+					else if ( get_query_var( 'author' ) )
+						$user = get_userdata( get_query_var( 'author' ) );
+					if ( is_object( $user ) && property_exists( $user, 'ID' ) )
+						$id = $user->ID;
+				} else {
+					// Try to get author of current post
+					$id = $post->post_author;
+				}
 				break;
 			}
 		}
@@ -609,9 +620,13 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 		return $output;
 }
 
+endif;
+
 // Map shortcode
 add_shortcode( 'slt-cf-gmap', 'slt_cf_gmap_shortcode' );
 function slt_cf_gmap_shortcode( $atts ) {
+	if ( ! SLT_CF_USE_GMAPS )
+		return '';
 	// Initialize from attributes
 	extract( shortcode_atts( array(
 		'width'				=> 0,
@@ -621,8 +636,6 @@ function slt_cf_gmap_shortcode( $atts ) {
 	// Return a map
 	return slt_cf_gmap( 'output', $name, 'stored_data', $width, $height, null, '', false );
 }
-
-endif;
 
 /* File Select button functions
 ***************************************************************************************/

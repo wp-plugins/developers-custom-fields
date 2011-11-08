@@ -35,7 +35,7 @@ function slt_cf_init() {
 
 // Admin initialization
 function slt_cf_admin_init() {
-	global $slt_cf_admin_notices, $slt_custom_fields, $pagenow;
+	global $slt_cf_admin_notices, $slt_custom_fields, $pagenow, $wp_version;
 	$requested_file = basename( $_SERVER['SCRIPT_FILENAME'] );
 	
 	// Decide now which notices to output
@@ -52,7 +52,9 @@ function slt_cf_admin_init() {
 		$script_vars['update_option_fail'] = __( 'There was a problem updating the option.', 'slt-custom-fields' );
 	}
 	wp_localize_script( 'slt-cf-scripts', 'slt_custom_fields', $script_vars );
-	add_action( 'admin_print_footer_scripts', 'wp_tiny_mce', 25 );
+	// Versions below 3.3 need TinyMCE initializing; 3.3 uses wp_editor()
+	if ( ! SLT_CF_WP_IS_GTE_3_3 )
+		add_action( 'admin_print_footer_scripts', 'wp_tiny_mce', 25 );
 	wp_enqueue_script( 'jquery-datepicker' );
 	wp_enqueue_style( 'jquery-datepicker-smoothness' );
 	if ( in_array( $requested_file, array( 'post-new.php', 'post.php' ) ) )
@@ -226,6 +228,7 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'charcounter'				=> false,
 				'allowtags'					=> array(),
 				'autop'						=> false,
+				'wysiwyg_settings'			=> array(), /* Defaults are dealt with below */
 				'preview_size'				=> 'medium',
 				'group_options'				=> false,
 				'datepicker_format'			=> $slt_custom_fields['datepicker_default_format'],
@@ -284,6 +287,13 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 							"bounds_sw"		=> "50.27802587971423,-7.160546875000023",
 							"bounds_ne"		=> "54.306194393010095,3.8257812499999773"
 						);
+					break;
+				}
+				case 'wysiwyg': {
+					if ( ! array_key_exists( 'teeny', $field['wysiwyg_settings'] ) )
+						$field['wysiwyg_settings']['teeny'] = true;
+					if ( ! array_key_exists( 'media_buttons', $field['wysiwyg_settings'] ) )
+						$field['wysiwyg_settings']['media_buttons'] = false;
 					break;
 				}
 			}

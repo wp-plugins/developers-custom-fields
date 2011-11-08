@@ -300,27 +300,38 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
 				// Input
 				echo $before_input;
-				echo '<textarea name="' . $field_name . '" id="' . $field_name . '" columns="50" rows="5" style="' . implode( ';', $input_styles ) . '" class="' . implode( ' ', $input_classes ) . '"';
-				// Character counter JS
-				if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] ) echo ' onkeyup="document.getElementById(\'' . $field_name . '-charcounter\').value=this.value.length;"';
-				// Value
-				if ( $field['type'] == "textile" )
-					$field_value = slt_cf_simple_formatting( $field_value, "textile", $field['autop'] );
-				echo '>' . htmlspecialchars( $field_value ) . '</textarea>';
-				// Character counter
-				if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] )
-					echo '<p>' . __( "Characters so far:", 'slt-custom-fields' ) . ' <input type="text" id="' . $field_name . '-charcounter" disabled="disabled" style="width:4em;color:#000;" value="' . strlen( $field_value ) . '" /></p>';
+				// Make sure textarea isn't output for WYSIWYG for 3.3 and above, wp_editor handles that
+				if ( $field['type'] != 'wysiwyg' || ! SLT_CF_WP_IS_GTE_3_3 ) {
+					echo '<textarea name="' . $field_name . '" id="' . $field_name . '" columns="50" rows="5" style="' . implode( ';', $input_styles ) . '" class="' . implode( ' ', $input_classes ) . '"';
+					// Character counter JS
+					if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] ) echo ' onkeyup="document.getElementById(\'' . $field_name . '-charcounter\').value=this.value.length;"';
+					// Value
+					if ( $field['type'] == "textile" )
+						$field_value = slt_cf_simple_formatting( $field_value, "textile", $field['autop'] );
+					echo '>' . htmlspecialchars( $field_value ) . '</textarea>';
+					// Character counter
+					if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] )
+						echo '<p>' . __( "Characters so far:", 'slt-custom-fields' ) . ' <input type="text" id="' . $field_name . '-charcounter" disabled="disabled" style="width:4em;color:#000;" value="' . strlen( $field_value ) . '" /></p>';
+				}
 				// WYSIWYG
-				if ( $field['type'] == 'wysiwyg' ) { ?>
-					<script type="text/javascript">
-						jQuery( document ).ready( function() {
-							jQuery( "<?php echo $field_name; ?>" ).addClass( 'mceEditor' );
-							if ( typeof( tinyMCE ) == 'object' && typeof( tinyMCE.execCommand ) == 'function' ) {
-								tinyMCE.execCommand( 'mceAddControl', false, '<?php echo $field_name; ?>' );
-							}
-						});
-					</script>
-				<?php }
+				if ( $field['type'] == 'wysiwyg' ) {
+					if ( SLT_CF_WP_IS_GTE_3_3 ) {
+						// For 3.3 and above - simple :)
+						wp_editor( $field_value, $field_name, $field['wysiwyg_settings'] );
+					} else {
+						// For versions below 3.3
+						?>
+						<script type="text/javascript">
+							jQuery( document ).ready( function() {
+								jQuery( "<?php echo $field_name; ?>" ).addClass( 'mceEditor' );
+								if ( typeof( tinyMCE ) == 'object' && typeof( tinyMCE.execCommand ) == 'function' ) {
+									tinyMCE.execCommand( 'mceAddControl', false, '<?php echo $field_name; ?>' );
+								}
+							});
+						</script>
+						<?php
+					}
+				}
 				echo $field_description;
 				echo $after_input;
 				break;
