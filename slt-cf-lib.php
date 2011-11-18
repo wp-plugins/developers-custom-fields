@@ -487,18 +487,18 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 	// Values
 	if ( $type == 'output' && $object_type != 'custom' && ( empty( $values ) || $values == 'stored_data' ) ) {
 		// Try to initalize values from current meta
-		if ( is_singular() ) {
-			global $post;
-			$request_type = 'post';
-			$scope = get_post_type();
-			$object_id = get_the_ID();
-		} else if ( is_author() ) {
+		if ( is_author() ) {
 			global $author, $wpdb;
 			$request_type = 'user';
 			$user = (array) get_userdata( intval( $author ) );
 			$roles = array_keys( $user[ $wpdb->prefix . 'capabilities' ] );
 			$scope = array_shift( $roles );
 			$object_id = $author;
+		} else {
+			global $post;
+			$request_type = 'post';
+			$scope = get_post_type();
+			$object_id = get_the_ID();
 		}
 		// Initialize fields - this function checks to make sure it's only called once per request
 		slt_cf_init_fields( $request_type, $scope, $object_id );
@@ -677,6 +677,19 @@ function slt_cf_file_select_button( $name, $value = 0, $label = 'Select file', $
 		}
 	?></div>
 <?php }
+
+// Add a JS call to media item output so the file select button can be placed for new uploads ????
+//add_filter( 'attachment_fields_to_edit', 'slt_cf_file_select_new_upload', 10, 2 );
+function slt_cf_file_select_new_upload( $fields, $post ) {
+	static $count = 0;
+	if ( substr( $post->post_mime_type, 0, 5 ) == 'image' ) {
+		$fields['slt_cf_file_select'] = array(
+			'tr' => '<tr id="slt-cf-new-upload-button-' . $count .'"><th></th><td><script type="text/javascript"> slt_fs_new_upload_button( ' . $count .' ); </script></td></tr>'
+		);
+		$count++;
+	}
+	return $fields;
+}
 
 // Generate markup for file link
 function slt_cf_file_select_link( $id ) {

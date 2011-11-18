@@ -185,11 +185,23 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 		$field_description = '';
 		if ( $field['type'] == 'textile' ) {
 			$field_description .= '<p class="description textile">' . __( 'You can apply the following simple formatting codes: <b>**bold**</b></span>&nbsp;&nbsp;<i>__italic__</i>&nbsp;&nbsp;&quot;Link text&quot;:http://domain.com', 'slt-custom-fields' ) . '</p>';
-		} else if ( isset( $field['allowtags'] ) && is_array( $field['allowtags'] ) && count( $field['allowtags'] ) ) {
-			$field_description .= '<p class="description html">' . __( "You can use the following HTML tags:", 'slt-custom-fields' );
-			foreach ( $field['allowtags'] as $tag )
-				$field_description .= '<code>&lt;' . $tag . '&gt;</code> ';
-			$field_description .= '</p>';
+		} else if ( ! current_user_can( 'unfiltered_html' ) ) {
+			// If user can't submit any HTML, display any that is allowed
+			if ( isset( $field['allowed_html'] ) && is_array( $field['allowed_html'] ) && count( $field['allowed_html'] ) ) {
+				$field_description .= '<p class="description html">' . __( "You can use the following HTML tags:", 'slt-custom-fields' );
+				// Switcheroo to use the WP allowed_tags function
+				global $allowedtags;
+				$temp = $allowedtags;
+				$allowedtags = $field['allowed_html'];
+				$field_description .= '<code>' . allowed_tags() . '</code></p>';
+				$allowedtags = $temp;
+			} else if ( isset( $field['allowtags'] ) && is_array( $field['allowtags'] ) && count( $field['allowtags'] ) ) {
+				// Deprecated
+				$field_description .= '<p class="description html">' . __( "You can use the following HTML tags:", 'slt-custom-fields' );
+				foreach ( $field['allowtags'] as $tag )
+					$field_description .= '<code>&lt;' . $tag . '&gt;</code> ';
+				$field_description .= '</p>';
+			}
 		}
 		if ( isset( $field['autop'] ) && $field['autop'] )
 			$field_description .= '<p class="description autop">' . __( "Line and paragraph breaks will be maintained.", 'slt-custom-fields' ) . '</p>';

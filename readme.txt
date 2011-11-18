@@ -3,8 +3,8 @@ Contributors: gyrus, adriantoll
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.0
-Tested up to: 3.3-beta2
-Stable tag: 0.7.1
+Tested up to: 3.3-beta3
+Stable tag: 0.7.2
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
@@ -98,8 +98,15 @@ Note that the internal Google Maps and file selection functionality is designed 
 Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues). If you're not sure if you've found a genuine issue or not, please start a thread on the [WP forum](http://wordpress.org/tags/developers-custom-fields).
 
 == Changelog ==
+= 0.7.2 =
+* Made the Gmap 'Find an address' geocoder work with 3.3's inclusion of jQuery UI autocomplete
+* Made File Select functionality compatible with new WP 3.3 Plupload interface
+* Added `allowed_html` field parameter; text field sanitization is now based on using `wp_kses` and testing for the `unfiltered_html` user capability
+* The `allowtags` field parameter is now deprecated
+* Fixed bug in `slt_cf_gmap` that failed to initialize properly when called via shortcode in a loop
+
 = 0.7.1 =
-* For 3.3 and above, switched inclusion of `wysiwyg` field to use new `wp_editor` function; also included `wysiwyg_settings` parameter to be passed to `wp_editor` 
+* For 3.3 and above, switched inclusion of `wysiwyg` field to use new `wp_editor` function; also included `wysiwyg_settings` parameter to be passed to `wp_editor` (thanks katoen!)
 * Changed the way the user ID is set up in `slt_cf_default_id` - now it tries to get ID of author whose archive page is being shown first
 * Fixed bug in `slt_cf_init_options`; new version in upgrade wasn't being stored
 * Fixed problem with Gmap shortcode not working even when `SLT_CF_USE_GMAPS` is set to `true`

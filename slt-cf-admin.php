@@ -155,7 +155,7 @@ function slt_cf_database_tools_screen() {
 		<div class="tool-box">
 			<h3 class="title"><?php _e( 'Clean up meta tables data', 'slt-custom-fields' ) ?></h3>
 			<?php if ( $slt_custom_fields['options']['alert-07-cleanup'] ) { ?>
-				<div class="slt-cf-warning"><p><?php _e( 'Note that some of your code may need updating after you use this tool. If your code includes tests for the value of single checkbox fields such as <code>if ( slt_cf_field_value( \'checkbox-field\' ) == \'yes\' ) [...]</code>, please update them. With the new boolean values, such code can now simply be written: <code>if ( slt_cf_field_value( \'checkbox-field\' ) ) [...]</code>. Please read <a href="http://sltaylor.co.uk/blog/developers-custom-fields-0-7-an-important-upgrade" target="_blank">this post</a> for full details.', SLT_THEME_SHORTNAME ); ?></p></div>
+				<div class="slt-cf-warning"><p><?php _e( 'Note that some of your code may need updating after you use this tool. If your code includes tests for the value of single checkbox fields such as <code>if ( slt_cf_field_value( \'checkbox-field\' ) == \'yes\' ) [...]</code>, please update them. With the new boolean values, such code can now simply be written: <code>if ( slt_cf_field_value( \'checkbox-field\' ) ) [...]</code>. Please read <a href="http://sltaylor.co.uk/blog/developers-custom-fields-0-7-an-important-upgrade" target="_blank">this post</a> for full details.', 'slt-custom-fields' ); ?></p></div>
 			<?php } ?>
 			<p><?php _e( 'Use this tool to:', 'slt-custom-fields' ); ?></p>
 			<ul class="ul-disc">

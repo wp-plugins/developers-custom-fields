@@ -18,7 +18,10 @@ function slt_cf_init() {
 		$slt_js_gmaps = plugins_url( 'js/slt-cf-gmaps.min.js', __FILE__ );
 	}
 	wp_register_script( 'slt-cf-scripts', $slt_js_admin, array( 'jquery' ) );
-	wp_register_script( 'jquery-datepicker', plugins_url( 'js/jquery-datepicker/jquery-ui-1.8.16.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.8.16', true );
+	if ( ! SLT_CF_WP_IS_GTE_3_3 ) {
+		// Register jQuery UI Datepicker for below WP 3.3
+		wp_register_script( 'jquery-ui-datepicker', plugins_url( 'js/jquery-datepicker/jquery-ui-1.8.16.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.8.16', true );
+	}
 	wp_register_style( 'jquery-datepicker-smoothness', $slt_custom_fields['datepicker_css_url'] );
 	wp_register_script( 'slt-cf-file-select', $slt_js_file_select, array( 'jquery', 'media-upload', 'thickbox' ) );
 	wp_register_script( 'google-maps-api', SLT_CF_REQUEST_PROTOCOL . 'maps.google.com/maps/api/js?sensor=false' );
@@ -52,17 +55,22 @@ function slt_cf_admin_init() {
 		$script_vars['update_option_fail'] = __( 'There was a problem updating the option.', 'slt-custom-fields' );
 	}
 	wp_localize_script( 'slt-cf-scripts', 'slt_custom_fields', $script_vars );
-	// Versions below 3.3 need TinyMCE initializing; 3.3 uses wp_editor()
-	if ( ! SLT_CF_WP_IS_GTE_3_3 )
+	if ( ! SLT_CF_WP_IS_GTE_3_3 ) {
+		// WP versions below 3.3 need TinyMCE initializing; 3.3+ uses wp_editor()
 		add_action( 'admin_print_footer_scripts', 'wp_tiny_mce', 25 );
-	wp_enqueue_script( 'jquery-datepicker' );
+	}
+	// Datepicker
+	wp_enqueue_script( 'jquery-ui-datepicker' );
 	wp_enqueue_style( 'jquery-datepicker-smoothness' );
+	// Make sure forms allow file uploads
 	if ( in_array( $requested_file, array( 'post-new.php', 'post.php' ) ) )
 		add_action( 'post_edit_form_tag' , 'slt_cf_file_upload_form' );
 	if ( in_array( $requested_file, array( 'user-edit.php', 'profile.php' ) ) )
 		add_action( 'user_edit_form_tag' , 'slt_cf_file_upload_form' );
 	// Google Maps
 	if ( SLT_CF_USE_GMAPS ) {
+		if ( SLT_CF_WP_IS_GTE_3_3 )
+			wp_enqueue_script( 'jquery-ui-autocomplete' );
 		wp_localize_script( 'slt-cf-gmaps', 'slt_cf_gmaps', array(
 			'geocoder_label'	=> esc_html__( 'Find an address', 'slt-custom-fields' )
 		));
@@ -75,8 +83,11 @@ function slt_cf_admin_init() {
 			'ajaxurl'			=> admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ),
 			'text_select_file'	=> esc_html__( 'Select', 'slt-custom-fields' )
 		));
-		// Disable Flash uploader until we can get the JS working with it to insert "Select" button
-		add_filter( 'flash_uploader', '__return_false', 5 );		
+		if ( ! SLT_CF_WP_IS_GTE_3_3 && $pagenow == 'media-upload.php' && array_key_exists( 'slt_cf_fs_field', $_GET ) ) {
+			// For WP versions below 3.3, disable the Flash uploader when the File select overlay is invoked
+			// The JS for this doesn't work with the Flash uploader
+			add_filter( 'flash_uploader', '__return_false', 5 );
+		}
 	}
 
 	// Deal with any form submissions for admin screen
@@ -226,7 +237,8 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'width'						=> 0,
 				'height'					=> 0,
 				'charcounter'				=> false,
-				'allowtags'					=> array(),
+				'allowtags'					=> array(), /* Deprecated */
+				'allowed_html'				=> array(),
 				'autop'						=> false,
 				'wysiwyg_settings'			=> array(), /* Defaults are dealt with below */
 				'preview_size'				=> 'medium',
@@ -256,6 +268,7 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 					break;
 				}
 			}
+			// Merge passed values with defaults
 			$field = array_merge( $field_defaults, $field );
 			// Defaults dependent on options type
 			switch ( $field['options_type'] ) {

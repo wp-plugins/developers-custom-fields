@@ -59,23 +59,43 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 					else
 						$value = $_POST[ $field_name ];
 
-					if ( is_string( $value ) ) {
-						// Basic trim for strings
+					// Deal with string inputs
+					if ( in_array( $field['type'], array( 'text', 'textarea', 'textile', 'wysiwyg' ) ) ) {
+
+						// Basic trim
 						$value = trim( $value );
-						if ( count( $field['allowtags'] ) ) {
-							// Strip all tags except those allowed
-							$value = strip_tags( $value, '<' . implode( '><', $field['allowtags'] ) . '>' );
-						} else if ( in_array( $field['type'], array( 'text', 'textarea' ) ) ) {
-							// If no tags are allowed, for text and textarea, strip all HTML
-							$value = strip_tags( $value );
+						
+						if ( $field['type'] == "textile" ) {
+							
+							// Textile: strip all tags, then format
+							$value = wp_kses( $value, array() );
+							$value = slt_cf_simple_formatting( $value, 'html', $field['autop'] );
+
+						} else if ( ! current_user_can( 'unfiltered_html' ) ) {
+
+							// For users that can't submit unfiltered HTML...
+							
+							// Are there any tags defined as being allowed?
+							if ( count( $field['allowed_html'] ) ) {
+								// Strip all tags except those allowed
+								$value = wp_kses( $value, $field['allowed_html'] );
+							} else if ( count( $field['allowtags'] ) ) {
+								// Deprecated
+								$value = strip_tags( $value, '<' . implode( '><', $field['allowtags'] ) . '>' );
+							} else if ( in_array( $field['type'], array( 'text', 'textarea' ) ) ) {
+								// If no tags are allowed, for text and textarea, strip all HTML
+								$value = wp_kses( $value, array() );
+							} else if ( $field['type'] == 'wysiwyg' ) {
+								// WYSIWYG: default to allow standard post tags
+								$value = wp_kses_post( $value );
+							}
+							
 						}
-					}
-					if ( $field['type'] == 'wysiwyg' || $field['autop'] ) {
+
 						// Auto-paragraphs for WYSIWYG and other fields with autop set
-						$value = wpautop( $value );
-					} else if ( $field['type'] == "textile" ) {
-						// Textile formatting
-						$value = slt_cf_simple_formatting( $value, 'html', $field['autop'] );
+						if ( $field['type'] == 'wysiwyg' || $field['autop'] )
+							$value = wpautop( $value );
+						
 					}
 		
 				} // Field type if
