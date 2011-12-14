@@ -3,13 +3,13 @@ Contributors: gyrus, adriantoll
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.0
-Tested up to: 3.3-RC1
+Tested up to: 3.3
 Stable tag: 0.7.2.1
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
 == Description ==
-This plugin is aimed at theme developers who want a set of tools that allows them to easily and flexibly define custom fields for all post types, and for user profiles.
+This plugin is aimed at plugin and theme developers who want a set of tools that allows them to easily and flexibly define custom fields for all post types, and for user profiles.
 
 Full documentation at [http://sltaylor.co.uk/wordpress/plugins/slt-custom-fields/docs/](http://sltaylor.co.uk/wordpress/plugins/slt-custom-fields/docs/).
 
@@ -98,6 +98,9 @@ Note that the internal Google Maps and file selection functionality is designed 
 Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues). If you're not sure if you've found a genuine issue or not, please start a thread on the [WP forum](http://wordpress.org/tags/developers-custom-fields).
 
 == Changelog ==
+= 0.7.3 =
+* Changed the way the file select JS detects being inside the Media Library overlay, in order to be compatible with the Inline Attachments plugin
+
 = 0.7.2.1 =
 * Fixed a bug in checkbox / select fields where `single` is set to `false` and no value is selected (thanks Dave Kellam!)
 

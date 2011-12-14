@@ -107,12 +107,19 @@ function slt_fs_media_overlay() {
 	var is_our_overlay;
 	is_our_overlay = false;
 	if ( jQuery( "body" ).attr( 'id' ) == 'media-upload' ) {
-		parent_src_vars = slt_fs_get_url_vars( parent.document.getElementById( 'TB_iframeContent' ).src );
-		if ( 'slt_cf_fs_field' in parent_src_vars )
-			is_our_overlay = true;
+		// Loop through iframes in parent until we find the one we're in, then test the ID
+		parent.jQuery( 'iframe' ).each( function( i, el ) {
+			var parent_src_vars;
+			if ( el.contentWindow === window && jQuery( el ).attr( 'id' ) == 'TB_iframeContent' ) {
+				parent_src_vars = slt_fs_get_url_vars( parent.document.getElementById( 'TB_iframeContent' ).src );
+				if ( 'slt_cf_fs_field' in parent_src_vars )
+					is_our_overlay = true;
+			}
+		});
 	}
 	return is_our_overlay;
 }
+
 
 // Parse URL variables
 // See: http://papermashup.com/read-url-get-variables-withjavascript/
