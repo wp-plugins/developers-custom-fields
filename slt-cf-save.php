@@ -113,11 +113,9 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 					if ( ! $field['single'] && ( $field['type'] == 'checkboxes' || ( $field['type'] == 'select' && $field['multiple'] ) ) ) {		
 						// Remove all old values
 						delete_metadata( $request_type, $object_id, $field_name );
-						// Add each new value separately, if there are values
-						if ( $value ) {
-							foreach ( $value as $value_item )
-								add_metadata( $metadata_type, $object_id, $field_name, $value_item, false );
-						}
+						// Add each new value separately
+						foreach ( $value as $value_item )
+							add_metadata( $metadata_type, $object_id, $field_name, $value_item, false );
 					} else if ( $value == '' ) {
 						// Delete field if it exists (and don't create it if it doesn't!)
 						delete_metadata( $request_type, $object_id, $field_name );
