@@ -3,7 +3,7 @@ Contributors: gyrus, adriantoll
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.0
-Tested up to: 3.3
+Tested up to: 3.3.1
 Stable tag: 0.7.2.1
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
@@ -100,6 +100,8 @@ Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Develope
 == Changelog ==
 = 0.7.3 =
 * Changed the way the file select JS detects being inside the Media Library overlay, in order to be compatible with the Inline Attachments plugin
+* Added the `edit_on_profile` flag, to signal that even if a user doesn't have the right capabilities to edit a user profile field, they can edit it on their own profile (thanks jbalyo!)
+* Improved error messages
 
 = 0.7.2.1 =
 * Fixed a bug in checkbox / select fields where `single` is set to `false` and no value is selected (thanks Dave Kellam!)

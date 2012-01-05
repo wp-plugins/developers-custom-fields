@@ -390,7 +390,7 @@ function slt_cf_params_type( $params, $type, $item_type, $item_data ) {
 		) {
 			$valid = true;
 		} else {
-			trigger_error( '<b>' . SLT_CF_TITLE . ':</b> A ' . ucfirst( $item_type ) . ' has a <b>' . $param . '</b> parameter that needs to be of the type: <b>' . $type . '</b>', E_USER_WARNING );
+			trigger_error( '<b>' . SLT_CF_TITLE . ':</b> The <b>\'' . ( array_key_exists( 'title', $item_data ) ? $item_data['title'] : $item_data['name'] ) . '\'</b> ' . ucfirst( $item_type ) . ' has a <b>' . $param . '</b> parameter that needs to be of the type: <b>' . $type . '</b>', E_USER_WARNING );
 		}
 	}
 	return $valid;

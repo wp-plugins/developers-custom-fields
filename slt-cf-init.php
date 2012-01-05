@@ -245,7 +245,8 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'group_options'				=> false,
 				'datepicker_format'			=> $slt_custom_fields['datepicker_default_format'],
 				'location_marker'			=> true,
-				'gmap_type'					=> 'roadmap'
+				'gmap_type'					=> 'roadmap',
+				'edit_on_profile'			=> false
 			);
 			// Defaults dependent on request type
 			switch ( $request_type ) {
@@ -314,7 +315,7 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 			// Check if parameters are the right types
 			if (
 				! slt_cf_params_type( array( 'name', 'label', 'type', 'label_layout', 'file_button_label', 'input_prefix', 'input_suffix', 'description', 'options_type', 'no_options', 'empty_option_text', 'preview_size', 'datepicker_format' ), 'string', 'field', $field ) ||
-				! slt_cf_params_type( array( 'hide_label', 'file_removeable', 'multiple', 'exclude_current', 'required', 'group_options', 'autop' ), 'boolean', 'field', $field ) ||
+				! slt_cf_params_type( array( 'hide_label', 'file_removeable', 'multiple', 'exclude_current', 'required', 'group_options', 'autop', 'edit_on_profile' ), 'boolean', 'field', $field ) ||
 				! slt_cf_params_type( array( 'scope', 'options', 'allowtags', 'options_query', 'capabilities' ), 'array', 'field', $field ) ||
 				! slt_cf_params_type( array( 'width', 'height' ), 'integer', 'field', $field )
 			) {		
@@ -329,9 +330,20 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 			}
 			
 			// Check capability if in admin
-			if ( is_admin() && ( ( in_array( $request_type, array( 'post', 'attachment' ) ) && ! slt_cf_capability_check( $field['type'], $field['capabilities'], $object_id ) ) || ! slt_cf_capability_check( $field['type'], $field['capabilities'] ) ) ) {
-				$unset_fields[] = $field_key;
-				continue;
+			if ( is_admin() ) {
+				// If object-specific capability check fails
+				// OR general capability check fails
+				// AND it's not a user request, a user box, the user editing their own profile, with the edit_on_profile flag set
+				if (
+					(	( in_array( $request_type, array( 'post', 'attachment' ) ) && ! slt_cf_capability_check( $field['type'], $field['capabilities'], $object_id ) ) ||
+						! slt_cf_capability_check( $field['type'], $field['capabilities'] )
+					) &&
+					! ( $request_type == 'user' && in_array( 'user', $box['type'] ) && IS_PROFILE_PAGE && $field['edit_on_profile'] )
+				) {
+					// Remove this field
+					$unset_fields[] = $field_key;
+					continue;
+				}
 			}
 
 			// Check uniqueness of field name in scope
