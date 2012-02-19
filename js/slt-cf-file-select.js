@@ -3,7 +3,7 @@ var select_button, parent_src_vars;
 select_button = '<a href="#" class="slt-cf-fs-insert button-secondary">' + slt_cf_file_select.text_select_file + '</a>';
 
 jQuery( document ).ready( function( $ ) {
-	
+
 	// Actions for screens with the file select button
 	if ( $( '.slt-cf-fs-button' ).length ) {
 
@@ -18,16 +18,16 @@ jQuery( document ).ready( function( $ ) {
 			tb_show( '', upload_url );
 			return false;
 		});
-	
+
 		// Wipe form values when remove checkboxes are checked
 		$( '.slt-cf-fs-button:first' ).parents( 'form' ).submit( function() {
 			$( '.slt-cf-fs-remove:checked' ).each( function() {
 				$( this ).siblings( 'input.slt-cf-fs-value' ).val( '' );
 			});
 		});
-		
+
 	}
-	
+
 	// Actions for the Media Library overlay
 	if ( slt_fs_media_overlay() ) {
 
@@ -58,7 +58,7 @@ jQuery( document ).ready( function( $ ) {
 				break;
 			}
 		}
-		
+
 		// Select functionality
 		$( 'a.slt-cf-fs-insert' ).live( 'click', function() {
 			var item_id;
@@ -77,14 +77,14 @@ jQuery( document ).ready( function( $ ) {
 			parent.slt_cf_fs_select_item( item_id, parent_src_vars['slt_cf_fs_field'] );
 			return false;
 		});
-		
+
 		// Bind to AJAX completion to handle dynamic upload interfaces
 		$( document ).ajaxComplete( function() {
 			slt_fs_media_item_interface();
 		});
-		
+
 	}
-	
+
 });
 
 // Function to switch interface elements for a media item

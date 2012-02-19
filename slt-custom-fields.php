@@ -9,24 +9,24 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 0.7.3
+Version: 0.7.2.2
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 */
 
 /*
-This program is free software; you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published by 
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
 the Free Software Foundation; version 2 of the License.
 
-This program is distributed in the hope that it will be useful, 
-but WITHOUT ANY WARRANTY; without even the implied warranty of 
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
-GNU General Public License for more details. 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License 
-along with this program; if not, write to the Free Software 
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA 
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 /*
@@ -47,7 +47,7 @@ global $slt_custom_fields, $wp_version;
 define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', 'slt-custom-fields' ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
-define( 'SLT_CF_VERSION', '0.7.2' );
+define( 'SLT_CF_VERSION', '0.7.2.2' );
 define( 'SLT_CF_WP_IS_GTE_3_3', version_compare( round( $wp_version, 1 ), '3.3' ) >= 0 );
 $slt_custom_fields = array();
 $slt_custom_fields['prefix'] = '_slt_';
@@ -72,7 +72,7 @@ $slt_custom_fields['options'] = slt_cf_init_options();
 
 /**
  * Initializes plugin options stored in database
- * 
+ *
  * @since	0.7
  * @return	array	The current option values
  */
@@ -168,7 +168,7 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 		if ( count( $slt_custom_fields['boxes'] ) )
 			slt_cf_save( 'post', $post_id, $post );
 	}
-	
+
 	// Save for an attachment screen
 	function slt_cf_save_attachment( $post, $attachment ) {
 		global $slt_custom_fields;
@@ -189,7 +189,7 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 		if ( count( $slt_custom_fields['boxes'] ) )
 			slt_cf_save( 'user', $user_id, $user );
 	}
-	
+
 	/* Includes
 	***************************************************************************************/
 	require_once( 'slt-cf-admin.php' );
