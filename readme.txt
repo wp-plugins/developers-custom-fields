@@ -13,6 +13,8 @@ This plugin is aimed at plugin and theme developers who want a set of tools that
 
 Full documentation at [http://sltaylor.co.uk/wordpress/plugins/slt-custom-fields/docs/](http://sltaylor.co.uk/wordpress/plugins/slt-custom-fields/docs/).
 
+Code on [GitHub](https://github.com/gyrus/WordPress-Developers-Custom-Fields).
+
 Issue tracking on [GitHub](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues). If you're not sure if you've found a genuine issue or not, please start a thread on the [WP forum](http://wordpress.org/tags/developers-custom-fields).
 
 Please note that this plugin isn't suitable for non-developers. It has been intentionally designed without a user interface for defining fields, and some aspects may be "unfriendly" to anyone not comfortable with hands-on WordPress development.
