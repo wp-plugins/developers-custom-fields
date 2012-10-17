@@ -4,6 +4,12 @@
 ***************************************************************************************/
 function slt_cf_setting( $key, $value ) {
 	global $slt_custom_fields;
+
+	// Pass renamed settings
+	if ( $key == 'datepicker_css_url' )
+		$key = 'ui_css_url';
+
+	// Set setting
 	if ( is_string( $key ) )
 		$slt_custom_fields[ $key ] = $value;
 }
@@ -44,12 +50,12 @@ function slt_cf_field_key( $key, $object_type = 'post' ) {
 	return slt_cf_prefix( $object_type ) . $key;
 }
 
-/* Return the right prefix (attachment postmeta shouldn't start with an underscore)
+/* Return the right prefix (attachment postmeta pre-3.5 shouldn't start with an underscore)
 ***************************************************************************************/
 function slt_cf_prefix( $object_type = 'post' ) {
 	global $slt_custom_fields;
 	$prefix = $slt_custom_fields['prefix'];
-	if ( $object_type == 'attachment' && substr( $prefix, 0, 1 ) == '_' )
+	if ( $object_type == 'attachment' && ! SLT_CF_WP_IS_GTE_3_5 && substr( $prefix, 0, 1 ) == '_' )
 		$prefix = substr( $prefix, 1 );
 	return $prefix;
 }
@@ -481,6 +487,10 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 	$using_default_name = false;
 	static $map_count = 1;
 
+	// Enqueue scripts
+	wp_enqueue_script( 'google-maps-api' );
+	wp_enqueue_script( 'slt-cf-gmaps' );
+
 	// Defaults
 	if ( empty( $name ) ) {
 		$name = 'gmap_' . $map_count;
@@ -609,15 +619,14 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 	}
 
 	// JavaScript
-	$output .= '<script type="text/javascript">' . "\n";
-	$output .= "jQuery( document ).ready( function($) {\n";
-	$output .= "slt_cf_gmap_init( '{$id}', '{$type}', {$location_marker}, '{$values['marker_latlng']}', '{$values['centre_latlng']}', {$values['zoom']}, '{$map_type_id}'";
+	$inline_script = "jQuery( document ).ready( function($) {\n";
+	$inline_script .= "slt_cf_gmap_init( '{$id}', '{$type}', {$location_marker}, '{$values['marker_latlng']}', '{$values['centre_latlng']}', {$values['zoom']}, '{$map_type_id}'";
 	// Callback?
 	if ( $js_callback )
-		$output .= ", '{$js_callback}'";
-	$output .= " );\n";
-	$output .= "});\n";
-	$output .= "</script>\n";
+		$inline_script .= ", '{$js_callback}'";
+	$inline_script .= " );\n";
+	$inline_script .= "});\n";
+	slt_cf_collect_dynamic_inline_footer_scripts( $inline_script );
 
 	// Close wrapper?
 	if ( $type == 'input' && ! $required )
@@ -629,6 +638,46 @@ function slt_cf_gmap( $type = 'output', $name = '', $values = 'stored_data', $wi
 		echo $output;
 	else
 		return $output;
+}
+
+/**
+ * Helper function to collect Gmaps init scripts for output in footer,
+ * in case jQuery is in footer
+ *
+ * @since	0.8
+ *
+ * @param	string	$script									The inline script
+ * @global	array	$slt_cf_dynamic_inline_footer_scripts
+ * @return	void
+ */
+function slt_cf_collect_dynamic_inline_footer_scripts( $script ) {
+	global $slt_cf_dynamic_inline_footer_scripts;
+	if ( ! is_array( $slt_cf_dynamic_inline_footer_scripts ) )
+		$slt_cf_dynamic_inline_footer_scripts = array();
+	$slt_cf_dynamic_inline_footer_scripts[] = $script;
+}
+
+/**
+ * Helper function to output Gmaps init scripts in footer
+ *
+ * @since	0.8
+ *
+ * @global	array	$slt_cf_dynamic_inline_footer_scripts
+ * @return	void
+ */
+if ( is_admin() )
+	add_action( 'admin_print_footer_scripts', 'slt_cf_output_dynamic_inline_footer_scripts', 99999, 1 );
+else
+	add_action( 'wp_footer', 'slt_cf_output_dynamic_inline_footer_scripts', 99999, 1 );
+function slt_cf_output_dynamic_inline_footer_scripts( $script ) {
+	global $slt_cf_dynamic_inline_footer_scripts;
+	if ( is_array( $slt_cf_dynamic_inline_footer_scripts ) && ! empty( $slt_cf_dynamic_inline_footer_scripts ) ) {
+		echo '<script type="text/javascript">' . "\n";
+		foreach ( $slt_cf_dynamic_inline_footer_scripts as $script ) {
+			echo $script;
+		}
+		echo '</script>' . "\n";
+	}
 }
 
 endif;
@@ -647,6 +696,7 @@ function slt_cf_gmap_shortcode( $atts ) {
 	// Return a map
 	return slt_cf_gmap( 'output', $name, 'stored_data', $width, $height, null, '', false );
 }
+
 
 /* File Select button functions
 ***************************************************************************************/
@@ -722,3 +772,273 @@ function slt_cf_file_select_get_file_ajax() {
 }
 
 endif;
+
+/* Options pre-sets
+ ***************************************************************************************/
+function slt_cf_options_preset( $preset ) {
+	$options = array();
+
+	switch ( $preset ) {
+
+		case 'countries': {
+			$countries = array(
+				'Abu Dhabi',
+				'Afghanistan',
+				'Ajman',
+				'Albania',
+				'Algeria',
+				'Andorra',
+				'Angola',
+				'Anguilla',
+				'Antigua and Barbuda',
+				'Argentina',
+				'Armenia',
+				'Aruba',
+				'Ascension',
+				'Australia',
+				'Austria',
+				'Azerbaijan',
+				'Azores',
+				'Bahamas',
+				'Bahrain',
+				'Balearic Islands',
+				'Bangladesh',
+				'Barbados',
+				'Belarus',
+				'Belgium',
+				'Belize',
+				'Benin',
+				'Bermuda',
+				'Bhutan',
+				'Bolivia',
+				'Bosnia-Herzegovina',
+				'Botswana',
+				'Brazil',
+				'British Indian Ocean',
+				'Brunei Darussalam',
+				'Bulgaria',
+				'Burkina Faso',
+				'Burma',
+				'Burundi',
+				'Cambodia',
+				'Cameroon',
+				'Canada',
+				'Canary Islands',
+				'Cape Verde',
+				'Cayman Islands',
+				'Central African Republic',
+				'Chad',
+				'Chile',
+				'China',
+				'Christmas Island',
+				'Cocos (Keeling) Island',
+				'Colombia',
+				'Comoros',
+				'Congo',
+				'Corsica',
+				'Costa Rica',
+				'Cote d\'Ivoire',
+				'Croatia',
+				'Cuba',
+				'Curacao',
+				'Cyprus',
+				'Czech Republic',
+				'Denmark',
+				'Djibouti',
+				'Dominica',
+				'Dominican Republic',
+				'Dubai',
+				'East Timor',
+				'Ecuador',
+				'Egypt',
+				'El Salvador',
+				'Equatorial Guinea',
+				'Eritrea',
+				'Estonia',
+				'Ethiopia',
+				'Falkland Islands',
+				'Faroe Islands',
+				'Fiji',
+				'Finland',
+				'France',
+				'French Guiana',
+				'French Polynesia',
+				'French Southern and Antarctic Territories',
+				'French West Indies',
+				'Fujairah',
+				'Gabon',
+				'Gambia',
+				'Gaza and KhanYunis',
+				'Georgia',
+				'Germany',
+				'Ghana',
+				'Gibraltar',
+				'Greece',
+				'Greenland',
+				'Grenada',
+				'Guam',
+				'Guatemala',
+				'Guinea',
+				'Guinea-Bissau',
+				'Guyana',
+				'Haiti',
+				'Honduras',
+				'Hong Kong',
+				'Hungary',
+				'Iceland',
+				'India',
+				'Indonesia',
+				'Iran',
+				'Iraq',
+				'Ireland',
+				'Israel',
+				'Italy',
+				'Jamaica',
+				'Japan',
+				'Jordan',
+				'Kazakhstan',
+				'Kenya',
+				'Kirghizstan',
+				'Kiribati',
+				'North Korea',
+				'South Korea',
+				'Kuwait',
+				'Laos',
+				'Latvia',
+				'Lebanon',
+				'Lesotho',
+				'Liberia',
+				'Libya',
+				'Liechtenstein',
+				'Lithuania',
+				'Luxembourg',
+				'Macao',
+				'Macedonia',
+				'Madagascar',
+				'Madeira',
+				'Malawi',
+				'Malaysia',
+				'Maldives',
+				'Mali',
+				'Malta',
+				'Marshall Islands',
+				'Mauritania',
+				'Mauritius',
+				'Mexico',
+				'Micronesia',
+				'Moldova',
+				'Monaco',
+				'Mongolia',
+				'Montenegro',
+				'Montserrat',
+				'Morocco',
+				'Mozambique',
+				'Namibia',
+				'Nauru Island',
+				'Nepal',
+				'Netherland Antilles',
+				'Netherlands',
+				'New Caledonia',
+				'New Zealand',
+				'Nicaragua',
+				'Niger Republic',
+				'Nigeria',
+				'Norfolk Island',
+				'Northern Mariana Island',
+				'Norway',
+				'Oman',
+				'Pakistan',
+				'Palau',
+				'Panama',
+				'Papua New Guinea',
+				'Paraguay',
+				'Peru',
+				'Philippines',
+				'Pitcairn Island',
+				'Poland',
+				'Portugal',
+				'Puerto Rico',
+				'Qatar',
+				'Ras al Khaimah',
+				'Reunion',
+				'Romania',
+				'Russia',
+				'Rwanda',
+				'Sabah',
+				'American Samoa',
+				'Western Samoa',
+				'San Marino',
+				'Sao Tome and Principe',
+				'Sarawak',
+				'Saudi Arabia',
+				'Senegal',
+				'Serbia',
+				'Seychelles',
+				'Sharjah',
+				'Sierra Leone',
+				'Singapore',
+				'Slovakia',
+				'Slovenia',
+				'Solomon Islands',
+				'Somalia',
+				'South Africa',
+				'South Georgia',
+				'South Sandwich Islands',
+				'Spain',
+				'Spanish North African Territories',
+				'Spitzbergen',
+				'Sri Lanka',
+				'Saint Kitts and Nevis',
+				'St Helena',
+				'St Lucia',
+				'St Pierre and Miquelon',
+				'St Vincent and Grenadines',
+				'Sudan',
+				'Suriname',
+				'Swaziland',
+				'Sweden',
+				'Switzerland',
+				'Syria',
+				'Taiwan',
+				'Tajikistan',
+				'Tanzania',
+				'Thailand',
+				'Tibet',
+				'Togo',
+				'Tonga',
+				'Trinidad and Tobago',
+				'Tristan da Cunha',
+				'Tunisia',
+				'Turkey',
+				'Turkmenistan',
+				'Turks and Caicos Islands',
+				'Tuvalu',
+				'Uganda',
+				'Ukraine',
+				'Umm al Qaiwan',
+				'United Arab Emirates',
+				'United Kingdom',
+				'Uruguay',
+				'USA',
+				'Uzbekistan',
+				'Vanuatu',
+				'Vatican City',
+				'Venezuela',
+				'Vietnam',
+				'British Virgin Islands',
+				'United States Virgin Islands',
+				'Wake Island',
+				'Wallis and Futuna Islands',
+				'Yemen',
+				'Zambia',
+				'Zimbabwe'
+			);
+			// Countries as both keys and values
+			$options = array_combine( $countries, $countries );
+			break;
+		}
+
+	}
+
+	return $options;
+}

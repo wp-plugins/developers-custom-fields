@@ -30,9 +30,9 @@ jQuery( document ).ready( function( $ ) {
 
 	// Actions for the Media Library overlay
 	if ( slt_fs_media_overlay() ) {
-
 		var current_tab;
 		current_tab = $( 'ul#sidemenu a.current' ).parent( 'li' ).attr( 'id' );
+
 		// Remove URL tab
 		$( 'ul#sidemenu li#tab-type_url' ).remove();
 		// Remove 'Save all changes' button
@@ -109,9 +109,9 @@ function slt_fs_media_overlay() {
 	if ( jQuery( "body" ).attr( 'id' ) == 'media-upload' ) {
 		// Loop through iframes in parent until we find the one we're in, then test the ID
 		parent.jQuery( 'iframe' ).each( function( i, el ) {
-			var parent_src_vars;
 			if ( el.contentWindow === window && jQuery( el ).attr( 'id' ) == 'TB_iframeContent' ) {
 				parent_src_vars = slt_fs_get_url_vars( parent.document.getElementById( 'TB_iframeContent' ).src );
+				//console.log( parent_src_vars );
 				if ( 'slt_cf_fs_field' in parent_src_vars )
 					is_our_overlay = true;
 			}
@@ -139,7 +139,7 @@ function slt_fs_new_upload_button( count ) {
 		jQuery( function( $ ) {
 			media_item_table = $( '#slt-cf-new-upload-button-' + count ).parents( 'table' );
 			$( media_item_table ).find( 'tbody tr:not(.submit), a.wp-post-thumbnail' ).remove();
-			$( media_item_table ).find( 'input[type=button][value=Edit Image]' ).remove();
+			$( media_item_table ).find( 'input[type=button][value="Edit Image"]' ).remove();
 			if ( $( media_item_table ).find( 'tr.submit td.savesend input' ).length )
 				$( media_item_table ).find( 'tr.submit td.savesend input' ).replaceWith( select_button );
 			else

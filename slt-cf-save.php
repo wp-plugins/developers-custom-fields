@@ -3,33 +3,44 @@
 /* Save custom field values
 ***************************************************************************************/
 
+/**
+ * Save custom field values
+ *
+ * @since	0.1
+ * @param	string	$request_type	'post' | 'attachment' | 'user' (corresponds to $type in slt_cf_register_box)
+ * @param	integer	$object_id		ID of object being edited
+ * @param	object	$object			The object being edited
+ * @param	array	$extras			Any extras, e.g. $attachment passed by attachment_fields_to_save filter
+ * @return	mixed
+ */
 function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 	global $slt_custom_fields;
-	
+
 	// Metadata type
 	if ( $request_type == 'attachment' )
 		$metadata_type = 'post';
 	else
 		$metadata_type = $request_type;
-	
+
 	// Loop through boxes
 	foreach ( $slt_custom_fields['boxes'] as $box ) {
 
-		// Check post meta box nonce
-		if ( $request_type == 'post' )
+		// Check meta box nonce
+		$nonce_prefix = '';
+		if ( $request_type == 'post' || ( SLT_CF_WP_IS_GTE_3_5 && $request_type == 'attachment' ) )
 			$nonce_prefix = slt_cf_prefix( $request_type ) . $box['id'];
-			
-		if ( $request_type != 'post' || ( isset( $_POST[ $nonce_prefix . '_wpnonce' ] ) && wp_verify_nonce( $_POST[ $nonce_prefix . '_wpnonce' ], $nonce_prefix . '_save' ) ) ) {
-		
+
+		if ( ! $nonce_prefix || ( isset( $_POST[ $nonce_prefix . '_wpnonce' ] ) && wp_verify_nonce( $_POST[ $nonce_prefix . '_wpnonce' ], $nonce_prefix . '_save' ) ) ) {
+
 			// Loop through fields
 			foreach ( $box['fields'] as $field ) {
 				// Skip notices
 				if ( $field['type'] == 'notice' )
 					continue;
-					
+
 				// Initialize
 				$field_name = slt_cf_prefix( $request_type ) . $field['name'];
-				
+
 				// Process the submitted value
 				$value = null;
 				$update = true;
@@ -64,9 +75,9 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 
 						// Basic trim
 						$value = trim( $value );
-						
+
 						if ( $field['type'] == "textile" ) {
-							
+
 							// Textile: strip all tags, then format
 							$value = wp_kses( $value, array() );
 							$value = slt_cf_simple_formatting( $value, 'html', $field['autop'] );
@@ -74,7 +85,7 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 						} else if ( ! current_user_can( 'unfiltered_html' ) ) {
 
 							// For users that can't submit unfiltered HTML...
-							
+
 							// Are there any tags defined as being allowed?
 							if ( count( $field['allowed_html'] ) ) {
 								// Strip all tags except those allowed
@@ -89,28 +100,28 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 								// WYSIWYG: default to allow standard post tags
 								$value = wp_kses_post( $value );
 							}
-							
+
 						}
 
 						// Auto-paragraphs for WYSIWYG and other fields with autop set
 						if ( $field['type'] == 'wysiwyg' || $field['autop'] )
 							$value = wpautop( $value );
-						
+
 					}
-		
+
 				} // Field type if
 
 				// Save meta entry
 				if ( $update ) {
-					
+
 					// Apply filters to value first
 					$value = apply_filters( 'slt_cf_pre_save_value', $value, $request_type, $object_id, $object, $field );
 
 					// Run save actions
 					do_action( 'slt_cf_pre_save', $value, $request_type, $object_id, $object, $field );
-				
+
 					// Separate fields?
-					if ( ! $field['single'] && ( $field['type'] == 'checkboxes' || ( $field['type'] == 'select' && $field['multiple'] ) ) ) {		
+					if ( ! $field['single'] && ( $field['type'] == 'checkboxes' || ( $field['type'] == 'select' && $field['multiple'] ) ) ) {
 						// Remove all old values
 						delete_metadata( $request_type, $object_id, $field_name );
 						// Add each new value separately, if there are values
@@ -120,7 +131,7 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 						}
 					} else if ( $value == '' ) {
 						// Delete field if it exists (and don't create it if it doesn't!)
-						delete_metadata( $request_type, $object_id, $field_name );
+						delete_metadata( $metadata_type, $object_id, $field_name );
 					} else {
 						// Update single field
 						update_metadata( $metadata_type, $object_id, $field_name, $value );
@@ -129,14 +140,14 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 				}
 
 			} // Fields foreach
-			
+
 		} // Nonce check if
-		
+
 	} // Boxes foreach
 
-	// Return $post for attachments (it's a filter, not an action!)
-	if ( $request_type == 'attachment' )
+	// Return $post for attachments pre-3.5 (it's a filter, not an action!)
+	if ( $request_type == 'attachment' && ! SLT_CF_WP_IS_GTE_3_5 )
 		return $object;
-		
+
 }
 

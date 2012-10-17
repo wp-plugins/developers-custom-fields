@@ -6,6 +6,14 @@
 // Global initialization
 function slt_cf_init() {
 	global $slt_custom_fields;
+
+	// Globals still to initialize (ones that use core functions with filters that aren't exposed if run earlier)
+	$slt_custom_fields['ui_css_url'] = plugins_url( 'js/jquery-ui/smoothness/jquery-ui-1.8.16.custom.css', __FILE__ );
+	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG )
+		$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.css', __FILE__ );
+	else
+		$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.min.css', __FILE__ );
+
 	// Register scripts and styles
 	wp_register_style( 'slt-cf-styles', $slt_custom_fields['css_url'] );
 	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) {
@@ -17,23 +25,27 @@ function slt_cf_init() {
 		$slt_js_file_select = plugins_url( 'js/slt-cf-file-select.min.js', __FILE__ );
 		$slt_js_gmaps = plugins_url( 'js/slt-cf-gmaps.min.js', __FILE__ );
 	}
-	wp_register_script( 'slt-cf-scripts', $slt_js_admin, array( 'jquery' ) );
+	wp_register_script( 'slt-cf-scripts', $slt_js_admin, array( 'jquery' ), SLT_CF_VERSION );
 	if ( ! SLT_CF_WP_IS_GTE_3_3 ) {
 		// Register jQuery UI Datepicker for below WP 3.3
-		wp_register_script( 'jquery-ui-datepicker', plugins_url( 'js/jquery-datepicker/jquery-ui-1.8.16.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.8.16', true );
+		wp_register_script( 'jquery-ui-datepicker', plugins_url( 'js/jquery-ui/jquery-ui-1.8.16.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.8.16', true );
 	}
-	wp_register_style( 'jquery-datepicker-smoothness', $slt_custom_fields['datepicker_css_url'] );
-	wp_register_script( 'slt-cf-file-select', $slt_js_file_select, array( 'jquery', 'media-upload', 'thickbox' ) );
-	wp_register_script( 'google-maps-api', SLT_CF_REQUEST_PROTOCOL . 'maps.google.com/maps/api/js?sensor=false' );
+
+	// Register jQuery UI Addon Timepicker for date and time fields
+	wp_register_script( 'jquery-ui-timepicker', plugins_url( 'js/jquery-ui/jquery-ui-timepicker-addon.min.js', __FILE__ ), array( 'jquery-ui-datepicker' ), '1.8.16', true );
+	wp_register_style( 'jquery-ui-smoothness', $slt_custom_fields['ui_css_url'] );
+	wp_register_script( 'slt-cf-file-select', $slt_js_file_select, array( 'jquery', 'media-upload', 'thickbox' ), SLT_CF_VERSION );
+
+	/*
+	 * Google Maps stuff is registered to go in the footer, so it can be enqueued dynamically
+	 * on the front-end, as the map is output
+	 */
+	wp_register_script( 'google-maps-api', SLT_CF_REQUEST_PROTOCOL . 'maps.google.com/maps/api/js?sensor=false', array(), false, true );
 	$gmaps_deps = array( 'jquery', 'jquery-ui-core' );
 	if ( ! class_exists( 'JCP_UseGoogleLibraries' ) )
 		$gmaps_deps[] = 'jquery-ui-autocomplete'; // Autocomplete included in Google's jQuery UI core
-	wp_register_script( 'slt-cf-gmaps', $slt_js_gmaps, $gmaps_deps );
-	// Google Maps for front and admin
-	if ( SLT_CF_USE_GMAPS ) {
-		wp_enqueue_script( 'google-maps-api' );
-		wp_enqueue_script( 'slt-cf-gmaps' );
-	}
+	wp_register_script( 'slt-cf-gmaps', $slt_js_gmaps, $gmaps_deps, SLT_CF_VERSION, true );
+
 	// Generic hook, mostly for dependent plugins to hook to
 	// See: http://core.trac.wordpress.org/ticket/11308#comment:7
 	do_action( 'slt_cf_init' );
@@ -64,7 +76,10 @@ function slt_cf_admin_init() {
 	}
 	// Datepicker
 	wp_enqueue_script( 'jquery-ui-datepicker' );
-	wp_enqueue_style( 'jquery-datepicker-smoothness' );
+	wp_enqueue_style( 'jquery-ui-smoothness' );
+	// Timepicker which needs the slider
+	wp_enqueue_script( 'jquery-ui-slider' );
+	wp_enqueue_script( 'jquery-ui-timepicker' );
 	// Make sure forms allow file uploads
 	if ( in_array( $requested_file, array( 'post-new.php', 'post.php' ) ) )
 		add_action( 'post_edit_form_tag' , 'slt_cf_file_upload_form' );
@@ -112,6 +127,16 @@ function slt_cf_admin_menus() {
 
 /* Initialize fields
 ***************************************************************************************/
+
+/**
+ * Initialize the registered fields for the given edit request
+ *
+ * @since	0.1
+ * @param	string	$request_type	'post' | 'attachment' | 'user' (corresponds to $type in slt_cf_register_box)
+ * @param	string	$scope			For 'post', post_type; for 'attachment', post_mime_type; for 'user', role
+ * @param	integer	$object_id		ID of object being edited
+ * @return	void
+ */
 function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 	global $slt_custom_fields, $wp_roles, $post, $user_id;
 
@@ -210,8 +235,16 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 			}
 
 			// File field type no longer needs the File Select plugin
-			if ( $field['type'] == 'file' && function_exists( 'slt_fs_button' )  )
+			if ( $field['type'] == 'file' && function_exists( 'slt_fs_button' )  ) {
 				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> File upload fields no longer needs the SLT File Select plugin - you can remove it if you want! If you use that plugin\'s functionality elsewhere, you can now just call the functions provided by this Custom Fields plugin.', E_USER_NOTICE );
+			}
+
+			// File field types not allowed for file attachments or user profiles
+			if ( $field['type'] == 'file' && in_array( $request_type, array( 'attachment', 'user' ) ) ) {
+				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> The field <b>' . $field['name'] . '</b> is a <code>file</code> type field, which is not allowed for attachments or user profiles.', E_USER_WARNING );
+				$unset_fields[] = $field_key;
+				continue;
+			}
 
 			// Set defaults
 			$field_defaults = array(
@@ -245,8 +278,9 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'autop'						=> false,
 				'wysiwyg_settings'			=> array(), /* Defaults are dealt with below */
 				'preview_size'				=> 'medium',
-				'group_options'				=> false,
 				'datepicker_format'			=> $slt_custom_fields['datepicker_default_format'],
+				'timepicker_format'			=> $slt_custom_fields['timepicker_default_format'],
+				'timepicker_ampm'			=> $slt_custom_fields['timepicker_default_ampm'],
 				'location_marker'			=> true,
 				'gmap_type'					=> 'roadmap',
 				'edit_on_profile'			=> false
@@ -317,8 +351,8 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 
 			// Check if parameters are the right types
 			if (
-				! slt_cf_params_type( array( 'name', 'label', 'type', 'label_layout', 'file_button_label', 'input_prefix', 'input_suffix', 'description', 'options_type', 'no_options', 'empty_option_text', 'preview_size', 'datepicker_format' ), 'string', 'field', $field ) ||
-				! slt_cf_params_type( array( 'hide_label', 'file_removeable', 'multiple', 'exclude_current', 'required', 'group_options', 'autop', 'edit_on_profile' ), 'boolean', 'field', $field ) ||
+				! slt_cf_params_type( array( 'name', 'label', 'type', 'label_layout', 'file_button_label', 'input_prefix', 'input_suffix', 'description', 'options_type', 'no_options', 'empty_option_text', 'preview_size', 'datepicker_format', 'timepicker_format' ), 'string', 'field', $field ) ||
+				! slt_cf_params_type( array( 'hide_label', 'file_removeable', 'multiple', 'exclude_current', 'required', 'group_options', 'autop', 'edit_on_profile', 'timepicker_ampm' ), 'boolean', 'field', $field ) ||
 				! slt_cf_params_type( array( 'scope', 'options', 'allowtags', 'options_query', 'capabilities' ), 'array', 'field', $field ) ||
 				! slt_cf_params_type( array( 'width', 'height' ), 'integer', 'field', $field )
 			) {
@@ -400,13 +434,13 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 			if ( $field['options_type'] != 'static' ) {
 
 				// Check for any placeholder values in the query
-				if ( array_search( '[OBJECT_ID]', $field['options_query'] ) ) {
+				if ( array_search( '[OBJECT_ID]', $field['options_query'] ) !== false ) {
 
 					// Object ID
 					$object_id = 0;
 					switch ( $field['options_type'] ) {
 						case 'posts': {
-							if ( property_exists( $post, 'ID' ) )
+							if ( isset( $post ) && is_object( $post ) && property_exists( $post, 'ID' ) )
 								$object_id = $post->ID;
 							break;
 						}
@@ -452,7 +486,7 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 							$field['options_query']['orderby'] = 'category';
 						// Exclude current post?
 						if ( $field[ 'exclude_current' ] ) {
-							if ( property_exists( $post, 'ID' ) )
+							if ( is_object( $post ) && property_exists( $post, 'ID' ) )
 								$field['options_query']['post__not_in'][] = $post->ID;
 						}
 						$posts_query = new WP_Query( $field['options_query'] );
@@ -518,6 +552,11 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 								$field['options'][$option_term->name] = $option_term->term_id;
 						}
  						break;
+					}
+
+					case 'countries': {
+						$field['options'] = slt_cf_options_preset( 'countries' );
+						break;
 					}
 
 					default: {

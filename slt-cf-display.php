@@ -45,9 +45,15 @@ function slt_cf_add_user_profile_sections( $user ) {
 		slt_cf_display_box( $user, $box_key, 'user' );
 }
 
-/* Add fields to an attachment screen
-* No boxes / sections, just loop through all fields
-***************************************************************************/
+/**
+ * Add fields to an attachment screen for pre-3.5
+ * No boxes / sections, just loop through all fields
+ *
+ * @since	0.6
+ * @param	array	$form_fields
+ * @param	object	$post
+ * @return	array
+ */
 function slt_cf_add_attachment_fields( $form_fields, $post ) {
 	global $slt_custom_fields;
 	foreach ( $slt_custom_fields['boxes'] as $box_key => $box ) {
@@ -68,7 +74,7 @@ function slt_cf_add_attachment_fields( $form_fields, $post ) {
 					break;
 				}
 				case 'text': {
-					$form_fields[ $field_name ]['html'] = slt_cf_input_text( $input_field_name, $form_fields[ $field_name ]['value'], $field['prefix'], $field['suffix'], array(), array(), false );
+					$form_fields[ $field_name ]['html'] = slt_cf_input_text( $input_field_name, $form_fields[ $field_name ]['value'], $field['input_prefix'], $field['input_suffix'], array(), array(), false );
 					break;
 				}
 			}
@@ -79,11 +85,21 @@ function slt_cf_add_attachment_fields( $form_fields, $post ) {
 	return $form_fields;
 }
 
-/* Display a box's fields
-***************************************************************************/
+
+/**
+ * Display a box's fields
+ *
+ * @since		0.1
+ * @param		object	$object
+ * @param		array	$custom_data
+ * @param		string	$request_type	'post' | 'user'; defaults to 'post' for both 'post' and 'attachment' requests
+ * @return		void
+ */
 function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 	global $slt_custom_fields;
 	static $date_output = false;
+	static $time_output = false;
+	static $datetime_output = false;
 
 	// Initialize
 	switch ( $request_type ) {
@@ -92,37 +108,35 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 			$box_key = $custom_data['args']['box'];
 			// Nonce for security
 			wp_nonce_field( slt_cf_prefix( 'post' ) . $slt_custom_fields['boxes'][$box_key]['id'] . '_save', $slt_custom_fields['prefix'] . $slt_custom_fields['boxes'][$box_key]['id'] . '_wpnonce', false, true );
+			// Description
+			if ( $slt_custom_fields['boxes'][ $box_key ][ 'description' ] )
+				echo '<p>' . $slt_custom_fields['boxes'][ $box_key ][ 'description' ] . '</p>';
 			break;
 		}
 		case 'user': {
 			// Get box key and output initial markup
 			$box_key = $custom_data;
 			echo '<h3>' . $slt_custom_fields['boxes'][ $box_key ]['title']. '</h3>';
+			// Description
+			if ( $slt_custom_fields['boxes'][ $box_key ][ 'description' ] )
+				echo '<p>' . $slt_custom_fields['boxes'][ $box_key ][ 'description' ] . '</p>';
 			echo '<table class="form-table">';
 			break;
 		}
 	}
-	
-	// Description
-	if ( $slt_custom_fields['boxes'][ $box_key ][ 'description' ] )
-		echo '<p>' . $slt_custom_fields['boxes'][ $box_key ][ 'description' ] . '</p>';
-		
+
 	// Loop through fields for this box
 	foreach ( $slt_custom_fields['boxes'][ $box_key ]['fields'] as $field ) {
 		$field_name = slt_cf_prefix( $slt_custom_fields['boxes'][ $box_key ]['type'] ) . $field['name'];
-		
-		// Skip fields not allowed in this scope
-		if ( $field['type'] == 'file' && $request_type == 'user' )
-			continue;
 
 		if ( ( $request_type == 'post' && $object->post_status == 'auto-draft' ) || ! slt_cf_field_exists( $field['name'], $request_type, $object->ID ) ) {
 			// Field doesn't exist yet, use a default if set
-			$field_value = $field['default'];
+			$field_value = apply_filters( 'slt_cf_default_value', $field['default'], $request_type, $object->ID, $object, $field );
 		} else {
 			// Get field value
 			$field_value = slt_cf_field_value( $field['name'], $request_type, $object->ID, '', '', false, $field['single'] );
 		}
-			
+
 		// Reverse autop?
 		if ( $field['autop'] )
 			$field_value = slt_cf_reverse_wpautop( $field_value );
@@ -174,13 +188,13 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				break;
 			}
 		}
-		
+
 		// Cloning
 		// [under development]
 		/*if ( $field['cloning'] ) {
 			$after_input = '<p class="slt-cf-clone-field"><a href="#" class="button">' . __( "Clone field", 'slt-custom-fields' ) . '</a></p>' . $after_input;
 		}*/
-		
+
 		// Description
 		$field_description = '';
 		if ( $field['type'] == 'textile' ) {
@@ -207,7 +221,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 			$field_description .= '<p class="description autop">' . __( "Line and paragraph breaks will be maintained.", 'slt-custom-fields' ) . '</p>';
 		if ( $field['description'] )
 			$field_description .= '<p class="description"><i>' . $field['description'] . '</i></p>';
-		
+
 		// Which type of field?
 		switch ( $field['type'] ) {
 
@@ -218,17 +232,20 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				$input = $before_input . '<input type="checkbox" name="' . $field_name . '" id="' . $field_name . '" value="1"';
 				if ( $field_value )
 					$input .= ' checked="checked"';
-				$input .=  ' />' . $after_input;
+				$input .=  ' />';
+				if ( $request_type == 'user' )
+					$input .= $field_description;
+				$input .= $after_input;
 				// Label
 				$label = $before_label . ' <label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
 				if ( $request_type == 'post' ) {
 					echo $input;
 					echo $label;
+					echo $field_description;
 				} else if ( $request_type == 'user' ) {
 					echo $label;
 					echo $input;
-				}				
-				echo $field_description;
+				}
 				break;
 			}
 
@@ -348,7 +365,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $after_input;
 				break;
 			}
-						
+
 			case "select": {
 				/* Select dropdown
 				*****************************************************************/
@@ -361,7 +378,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $after_input;
 				break;
 			}
-						
+
 			case 'file': {
 				/* File upload field
 				*****************************************************************/
@@ -374,7 +391,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $after_input;
 				break;
 			}
-						
+
 			case 'gmap': {
 				/* Google Map field
 				*****************************************************************/
@@ -387,7 +404,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $after_input;
 				break;
 			}
-						
+
 			case 'date': {
 				/* Date field
 				*****************************************************************/
@@ -402,7 +419,9 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 					?>
 					<script type="text/javascript">
 						jQuery( document ).ready( function($) {
-							$( 'input.slt-cf-date' ).datepicker({ dateFormat: '<?php echo $field['datepicker_format']; ?>' });
+							$( 'input.slt-cf-date' ).datepicker({
+								dateFormat: '<?php echo $field['datepicker_format']; ?>'
+							});
 						});
 					</script>
 					<?php
@@ -412,7 +431,64 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $after_input;
 				break;
 			}
-						
+
+			case 'time': {
+				/* Time field
+				*****************************************************************/
+				// Label
+				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
+				// Input
+				$input_classes[] = 'slt-cf-time';
+				echo $before_input;
+				echo '<input type="text" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars( $field_value ) . '" style="' . implode( ';', $input_styles ) . '" class="' . implode( ' ', $input_classes ) . '" />';
+				echo ' <i>' . $field['timepicker_format'] . '</i>';
+				if ( ! $time_output ) {
+					?>
+					<script type="text/javascript">
+						jQuery( document ).ready( function($) {
+							$( 'input.slt-cf-time' ).timepicker({
+								timeFormat: '<?php echo $field['timepicker_format']; ?>',
+								ampm: '<?php echo $field['timepicker_ampm']; ?>'
+							});
+						});
+					</script>
+					<?php
+					$time_output = true;
+				}
+				echo $field_description;
+				echo $after_input;
+				break;
+			}
+
+			case 'datetime': {
+				/* Date and time field
+				*****************************************************************/
+				// Label
+				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
+				// Input
+				$input_classes[] = 'slt-cf-datetime';
+				echo $before_input;
+				echo '<input type="text" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars( $field_value ) . '" style="' . implode( ';', $input_styles ) . '" class="' . implode( ' ', $input_classes ) . '" />';
+				echo ' <i>' . str_replace( "y", "yy", $field['datepicker_format'] ) . ' ' . $field['timepicker_format'] . '</i>';
+				if ( ! $datetime_output ) {
+					?>
+					<script type="text/javascript">
+						jQuery( document ).ready( function($) {
+							$( 'input.slt-cf-datetime' ).datetimepicker({
+								dateFormat: '<?php echo $field['datepicker_format']; ?>',
+								timeFormat: '<?php echo $field['timepicker_format']; ?>',
+								ampm: '<?php echo $field['timepicker_ampm']; ?>'
+							});
+						});
+					</script>
+					<?php
+					$datetime_output = true;
+				}
+				echo $field_description;
+				echo $after_input;
+				break;
+			}
+
 			case 'notice': {
 				/* Notice - no form field
 				*****************************************************************/
@@ -420,7 +496,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $before_input . $field_description . $after_input;
 				break;
 			}
-						
+
 			default: {
 				/* Plain text field
 				*****************************************************************/
@@ -434,9 +510,9 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $after_input;
 				break;
 			}
-						
+
 		} // End switch
-					
+
 		// Markup to wrap field
 		switch ( $request_type ) {
 			case 'post': {
@@ -450,11 +526,11 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 		}
 
 	} // Fields foreach
-	
+
 	// Round off any markup
 	if ( $request_type == 'user')
 		echo '</table>';
-	
+
 }
 
 /* Field output functions
@@ -496,7 +572,7 @@ function slt_cf_input_select( $field_name, $field_value, $prefix = '', $suffix =
 		$output .= '" id="' . esc_attr( $field_name ) . '" style="' . esc_attr( implode( ';', $input_styles ) ) . '" class="' . esc_attr( implode( ' ', $input_classes ) ) . '"';
 		if ( $multiple ) {
 			$size = ( count( $options ) < 15 ) ? count( $options ) : 15;
-			$output .= ' multiple="multiple" size="' . esc_attr( $size ) . '"';							
+			$output .= ' multiple="multiple" size="' . esc_attr( $size ) . '"';
 		}
 		$output .= '>';
 		// Handle option groups
