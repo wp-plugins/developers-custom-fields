@@ -4,7 +4,7 @@ Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.0
 Tested up to: 3.5
-Stable tag: 0.8.1
+Stable tag: 0.8.2
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
@@ -89,6 +89,9 @@ Note that the internal Google Maps and file selection functionality is designed 
 Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues). If you're not sure if you've found a genuine issue or not, please start a thread on the [WP forum](http://wordpress.org/tags/developers-custom-fields).
 
 == Changelog ==
+= 0.8.2 =
+* Added post meta output (inspired by Post Meta Inspector plugin)
+
 = 0.8.1 =
 * Added slt_cf_strip_prefix()
 * Added more hooks to allow some standard functions to be overtaken

@@ -9,7 +9,7 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 0.8.1
+Version: 0.8.2
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 */
@@ -47,7 +47,7 @@ global $slt_custom_fields, $wp_version;
 define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', 'slt-custom-fields' ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
-define( 'SLT_CF_VERSION', '0.8.1' );
+define( 'SLT_CF_VERSION', '0.8.2' );
 define( 'SLT_CF_WP_IS_GTE_3_3', version_compare( round( $wp_version, 1 ), '3.3' ) >= 0 );
 define( 'SLT_CF_WP_IS_GTE_3_5', version_compare( round( $wp_version, 1 ), '3.5' ) >= 0 );
 $slt_custom_fields = array();
@@ -137,6 +137,10 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 			slt_cf_init_fields( $request_type, $scope, $object->ID );
 			if ( count( $slt_custom_fields['boxes'] ) )
 				slt_cf_add_meta_boxes( $context );
+
+			// Post meta output for admins
+			if ( current_user_can( 'update_core' ) )
+				add_meta_box( 'slt_cf_postmeta_output', __( 'All post meta' ), 'slt_cf_postmeta_output', null, 'advanced', 'low' );
 		}
 	}
 
