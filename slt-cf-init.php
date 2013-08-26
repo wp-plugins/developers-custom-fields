@@ -107,6 +107,8 @@ function slt_cf_admin_init() {
 			add_filter( 'flash_uploader', '__return_false', 5 );
 		}
 	}
+	// Sortable
+	wp_enqueue_script( 'jquery-ui-sortable' );
 
 	// Deal with any form submissions for admin screen
 	if ( array_key_exists( 'slt-cf-form', $_POST ) && check_admin_referer( 'slt-cf-' . $_POST['slt-cf-form'], '_slt_cf_nonce' ) )
@@ -269,7 +271,9 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'exclude_current'			=> true,
 				'single'					=> true,
 				'required'					=> false,
+				'sortable'					=> false,
 				'empty_option_text'			=> '[' . __( "None", "slt-custom-fields" ) . ']',
+				'abbreviate_option_labels'	=> true,
 				'width'						=> 0,
 				'height'					=> 0,
 				'charcounter'				=> false,
@@ -519,7 +523,8 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 									$current_category = $this_category;
 								}
 							}
-							$field['options'][ slt_cf_abbreviate( $post_data->post_title ) ] = $post_data->ID;
+							$option_text = $field['abbreviate_option_labels'] ? slt_cf_abbreviate( $post_data->post_title ) : $post_data->post_title;
+							$field['options'][ $option_text ] = $post_data->ID;
 						}
 						break;
 					}
@@ -541,8 +546,10 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 								if ( $field[ 'group_options' ] )
 									$field['options'][ str_replace( '_', ' ', strtoupper( $role ) ) ] = '[optgroup]';
 								// Add users to options
-								foreach ( $users as $user_data )
-									$field['options'][ $user_data->display_name ] = $user_data->ID;
+								foreach ( $users as $user_data ) {
+									$option_text = $field['abbreviate_option_labels'] ? slt_cf_abbreviate( $user_data->display_name ) : $user_data->display_name;
+									$field['options'][ $option_text ] = $user_data->ID;
+								}
 							}
 						}
 						break;
@@ -560,8 +567,10 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 						} else
 						*/
 						if ( ! is_wp_error( $option_terms = get_terms( $taxonomies, $args ) ) ) {
-							foreach ( $option_terms as $option_term )
-								$field['options'][$option_term->name] = $option_term->term_id;
+							foreach ( $option_terms as $option_term ) {
+								$option_text = $field['abbreviate_option_labels'] ? slt_cf_abbreviate( $option_term->name ) : $option_term->name;
+								$field['options'][ $option_text ] = $option_term->term_id;
+							}
 						}
  						break;
 					}
