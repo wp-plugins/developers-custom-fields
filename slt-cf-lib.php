@@ -146,7 +146,9 @@ function slt_cf_all_field_values( $type = 'post', $id = 0, $multiple_fields = ar
 	// Sortable fields?
 	if ( ! empty( $multiple_fields ) ) {
 		foreach ( $multiple_fields as $multiple_field ) {
-			$all_values[ $multiple_field ] = slt_cf_maybe_sort( $all_values[ $multiple_field ], $multiple_field, $type, $id );
+			if ( array_key_exists( $multiple_field, $all_values ) ) {
+				$all_values[ $multiple_field ] = slt_cf_maybe_sort( $all_values[ $multiple_field ], $multiple_field, $type, $id );
+			}
 		}
 	}
 
@@ -285,7 +287,9 @@ function slt_cf_check_scope( $field, $request_type, $request_scope, $object_id )
 
 		// Test for an explicit match
 		foreach ( $field['scope'] as $scope_key => $scope_value ) {
+
 			if ( is_string( $scope_key ) && $request_type == 'post' && $scope_key == 'template' ) {
+
 				// Page template matching
 				$custom_fields = get_post_custom_values( '_wp_page_template', $object_id );
 				$page_template = $custom_fields[0];
@@ -297,7 +301,9 @@ function slt_cf_check_scope( $field, $request_type, $request_scope, $object_id )
 				}
 				if ( $scope_match )
 					break;
+
 			} else if ( is_string( $scope_key ) && $request_type == 'post' && in_array( $scope_key, get_object_taxonomies( $request_scope ) ) ) {
+
 				// Taxonomic matching
 				$object_terms = wp_get_object_terms( $object_id, $scope_key, array( 'fields' => 'names' ) );
 				foreach ( (array) $scope_value as $scope_term_name ) {
@@ -308,39 +314,54 @@ function slt_cf_check_scope( $field, $request_type, $request_scope, $object_id )
 				}
 				if ( $scope_match )
 					break;
+
+			} else if ( $scope_value == 'registration' && $request_type == 'user' && $request_scope == 'registration' && in_array( get_option( 'default_role' ), $field['scope'] ) ) {
+
+				// Registration
+				$scope_match = true;
+				break;
+
 			} else if ( is_string( $scope_value ) && (
 				( $request_type == 'post' && in_array( $scope_value, get_post_types() ) ) ||
 				( $request_type == 'user' && array_key_exists( $scope_value, $wp_roles->role_names ) ) ||
 				( $request_type == 'attachment' && array_search( $scope_value, get_allowed_mime_types() ) )
 			)) {
+
 				// Basic scope match, against post type, user role, or MIME type
 				if ( $request_scope == $scope_value ) {
 					$scope_match = true;
 					break;
 				}
+
 			} else if ( in_array( $scope_key, array( 'users', 'posts', 'attachments' ) ) && is_array( $scope_value ) ) {
+
 				// Match particular object IDs
 				if ( $scope_key == $request_type . 's' && in_array( $object_id, $scope_value ) ) {
 					$scope_match = true;
 					break;
 				}
+
 			} else {
+
 				// See if there are any matching custom scope checks
 				$scope_match = apply_filters( 'slt_cf_check_scope', $scope_match, $request_type, $request_scope, $object_id, $scope_key, $scope_value, $field );
 				if ( $scope_match )
 					break;
+
 			}
 		}
 
 	}
 
 	// Any post exceptions
-	if ( in_array( $request_type, array( 'post', 'attachment' ) ) && array_key_exists( 'except_posts', $field['scope'] ) && $scope_match && in_array( $object_id, $field['scope']['except_posts'] ) )
+	if ( in_array( $request_type, array( 'post', 'attachment' ) ) && array_key_exists( 'except_posts', $field['scope'] ) && $scope_match && in_array( $object_id, $field['scope']['except_posts'] ) ) {
 		$scope_match = false;
+	}
 
 	// Any user exceptions
-	if ( $request_type == 'user' && array_key_exists( 'except_users', $field['scope'] ) && $scope_match && in_array( $object_id, $field['scope']['except_users'] ) )
+	if ( $request_type == 'user' && array_key_exists( 'except_users', $field['scope'] ) && $scope_match && in_array( $object_id, $field['scope']['except_users'] ) ) {
 		$scope_match = false;
+	}
 
 	return $scope_match;
 }
@@ -811,8 +832,8 @@ function slt_cf_file_select_button( $name, $value = 0, $label = 'Select file', $
 	?></div>
 <?php }
 
-// Add a JS call to media item output so the file select button can be placed for new uploads ????
-//add_filter( 'attachment_fields_to_edit', 'slt_cf_file_select_new_upload', 10, 2 );
+// Add a JS call to media item output so the file select button can be placed for new uploads
+add_filter( 'attachment_fields_to_edit', 'slt_cf_file_select_new_upload', 10, 2 );
 function slt_cf_file_select_new_upload( $fields, $post ) {
 	static $count = 0;
 	if ( substr( $post->post_mime_type, 0, 5 ) == 'image' ) {
@@ -829,7 +850,15 @@ function slt_cf_file_select_link( $id ) {
 	$attachment_url = wp_get_attachment_url( $id );
 	$filetype_check = wp_check_filetype( $attachment_url );
 	$filetype_parts = explode( '/', $filetype_check['type'] );
-	return '<a href="' . wp_get_attachment_url( $id ) . '" style="display: block; min-height:32px; padding: 10px 0 0 38px; background: url(' . plugins_url( "img/icon-" . $filetype_parts[1] . ".png", __FILE__ ) . ') no-repeat; font-size: 13px; font-weight: bold;">' . basename( $attachment_url ) . '</a>';
+	$icon_files = glob( plugin_dir_path( __FILE__ ) . 'img/icon-*.png' );
+	$filetype = 'unknown';
+	foreach ( $icon_files as $icon_file ) {
+		if ( basename( $icon_file ) == 'icon-' . $filetype_parts[1] . '.png' ) {
+			$filetype = $filetype_parts[1];
+			break;
+		}
+	}
+	return '<a href="' . wp_get_attachment_url( $id ) . '" style="display: block; min-height:32px; padding: 10px 0 0 38px; background: url(' . plugins_url( "img/icon-" . $filetype . ".png", __FILE__ ) . ') no-repeat; font-size: 13px; font-weight: bold;">' . basename( $attachment_url ) . '</a>';
 }
 
 // AJAX wrapper to get image HTML
@@ -1113,4 +1142,16 @@ function slt_cf_options_preset( $preset ) {
 	}
 
 	return $options;
+}
+
+
+/* Sort queries by post type
+Used when multiple post types are being queried and they need to be grouped in the output
+To be hooked to pre_get_posts
+ ***************************************************************************************/
+
+function slt_cf_sort_queries_by_post_type( $query ) {
+	if ( strpos( $query->query_vars['orderby'], 'post_type' ) === false ) {
+		$query->set( 'orderby', 'post_type ' . $query->query_vars['orderby'] );
+	}
 }

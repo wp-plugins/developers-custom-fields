@@ -3,8 +3,8 @@ Contributors: gyrus, adriantoll, saurabhshukla
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.0
-Tested up to: 3.6
-Stable tag: 0.8.4
+Tested up to: 3.8.2
+Stable tag: 0.9
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
@@ -91,6 +91,19 @@ Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Develope
 **NOTE:** Some people have found compatibility issues between the [WPMU DEV Events+](http://premium.wpmudev.org/project/events-plus/) plugin and this plugin (see [here](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/23) and [here](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/24)). If you find an apparent issue with this plugin and you're also using WPMU DEV Events+, please check for incompatibilities before posting an issue.
 
 == Changelog ==
+= 0.9 =
+* Fixed issue with sortable checkboxes where new options don't appear in list
+* Added `group_by_post_type` parameter, to group multiple post type queries by post type
+* Added `attachments_list` field type
+* Added `slt_cf_attachments_list_query` filter
+* Improved file preview icon handling for file types without an icon
+* User fields can now be added to the registration form - see the docs for [the `scope` parameter](http://sltaylor.co.uk/wordpress/developers-custom-fields-docs/#functions-boxes-fields)
+* Sortable checkboxes can now set default to `force-all` to just use a field for sorting, not selecting
+* Retired "0.7 cleanup" and other redundant database tools
+* Fixed "remove old fields" database tool
+* Better enqueueing of scripts and styles
+* Test to delete empty values changed to exactly match empty strings (numeric 0 gets stored)
+
 = 0.8.4 =
 * Added `abbreviate_option_labels` field parameter
 * Added `sortable` parameter for multiple checkboxes

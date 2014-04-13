@@ -31,10 +31,10 @@ function slt_cf_move_metaboxes() {
 	}
 	if ( ! empty( $output ) ) { ?>
 		<script type="text/javascript">//<![CDATA[
-		var slt_cf_metaboxes_above_content = [];
-		<?php foreach ( $output as $output_line ) { echo $output_line; ?>
-		<?php } ?>
-		//]]></script>
+			var slt_cf_metaboxes_above_content = [];
+			<?php foreach ( $output as $output_line ) { echo $output_line; ?>
+			<?php } ?>
+			//]]></script>
 	<?php }
 }
 
@@ -129,17 +129,31 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 	foreach ( $slt_custom_fields['boxes'][ $box_key ]['fields'] as $field ) {
 		$field_name = slt_cf_prefix( $slt_custom_fields['boxes'][ $box_key ]['type'] ) . $field['name'];
 
-		if ( ( $request_type == 'post' && $object->post_status == 'auto-draft' ) || ! slt_cf_field_exists( $field['name'], $request_type, $object->ID ) ) {
+		if ( isset( $_POST[ $field_name ] ) ) {
+
+			// Pass through from submitted form (with errors)
+			$field_value = $_POST[ $field_name ];
+
+		} else if (	( $request_type == 'post' && $object->post_status == 'auto-draft' ) ||
+			( $request_type == 'user' && ! is_object( $object ) ) ||
+			( is_object( $object ) && ! slt_cf_field_exists( $field['name'], $request_type, $object->ID ) )
+		) {
+
 			// Field doesn't exist yet, use a default if set
-			$field_value = apply_filters( 'slt_cf_default_value', $field['default'], $request_type, $object->ID, $object, $field );
+			$object_id = is_object( $object ) ? $object->ID : null;
+			$field_value = apply_filters( 'slt_cf_default_value', $field['default'], $request_type, $object_id, $object, $field );
+
 		} else {
+
 			// Get field value
 			$field_value = slt_cf_field_value( $field['name'], $request_type, $object->ID, '', '', false, $field['single'] );
+
 		}
 
 		// Reverse autop?
-		if ( $field['autop'] )
+		if ( $field['autop'] ) {
 			$field_value = slt_cf_reverse_wpautop( $field_value );
+		}
 
 		// Set defaults for styles and classes
 		$field_classes = array( 'slt-cf', 'slt-cf-' . $field['type'], 'slt-cf-field_' . $field['name'] );
@@ -261,13 +275,14 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				/* Multiple checkboxes
 				*****************************************************************/
 				if ( $request_type == 'post' ) {
+					echo $before_input;
 					echo '<fieldset>';
 					echo '<legend class="' . implode( ' ', $legend_classes ) . '">' . $field['label'] . '</legend>';
 				} else {
 					echo $before_label . $field['label'] . $after_label;
+					echo $before_input;
 				}
 				// Loop through options
-				echo $before_input;
 				// No options?
 				if ( empty( $field['options'] ) ) {
 					echo '<p><em>' . $field['no_options'] . '</em></p>';
@@ -278,9 +293,19 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 					$cb_tag = 'div';
 					$sortable_options = array();
 					if ( $field['sortable'] && $current_order = slt_cf_field_values_order( $field['name'], $request_type ) ) {
-						foreach ( explode( ',', $current_order ) as $key => $value ) {
+						// Add already ordered items in order
+						$current_order_values = explode( ',', $current_order );
+						foreach ( $current_order_values as $value ) {
 							if ( ( $target_key = array_search( $value, $field['options'] ) ) !== false ) {
 								$sortable_options[] = array( $target_key, $value );
+							}
+						}
+						//echo '<pre>'; print_r( $sortable_options ); echo '</pre>';
+						//echo '<pre>'; print_r( $field['options'] ); echo '</pre>'; exit;
+						// Append any new unordered items
+						foreach ( $field['options'] as $key => $value ) {
+							if ( ! in_array( $value, $current_order_values ) ) {
+								$sortable_options[] = array( $key, $value );
 							}
 						}
 					} else {
@@ -303,8 +328,12 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 						}
 						// Input
 						echo '<input type="checkbox" name="' . $field_name . '_' . $value . '" id="' . $field_name . '_' . $value . '" value="yes"';
-						if ( is_array( $field_value ) && in_array( $value, $field_value )  )
+						if ( ( is_array( $field_value ) && in_array( $value, $field_value ) ) || ( $field['sortable'] && $field['default'] === 'force-all' ) ) {
 							echo ' checked="checked"';
+							if ( $field['sortable'] && $field['default'] === 'force-all' ) {
+								echo ' style="visibility:hidden;"';
+							}
+						}
 						echo ' />';
 						// Label
 						echo ' <label for="' . $field_name .'_' . $value . '">' . $key . '</label>';
@@ -370,6 +399,10 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $before_input;
 				// Make sure textarea isn't output for WYSIWYG for 3.3 and above, wp_editor handles that
 				if ( $field['type'] != 'wysiwyg' || ! SLT_CF_WP_IS_GTE_3_3 ) {
+					if ( $request_type == 'user' && ! is_object( $object ) ) {
+						// Proper styling for registration form
+						$input_classes[] = 'input';
+					}
 					echo '<textarea name="' . $field_name . '" id="' . $field_name . '" columns="50" rows="5" style="' . implode( ';', $input_styles ) . '" class="' . implode( ' ', $input_classes ) . '"';
 					// Character counter JS
 					if ( $field['type'] != "wysiwyg" && isset( $field['charcounter'] ) && $field['charcounter'] ) echo ' onkeyup="document.getElementById(\'' . $field_name . '-charcounter\').value=this.value.length;"';
@@ -397,7 +430,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 								}
 							});
 						</script>
-						<?php
+					<?php
 					}
 				}
 				echo $field_description;
@@ -537,14 +570,96 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 			}
 
 			default: {
-				/* Plain text field
+			/* Plain text field
+			*****************************************************************/
+			// Label
+			echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
+			// Input
+			$input_classes[] = 'regular-text';
+			echo $before_input;
+			slt_cf_input_text( $field_name, $field_value, $field['input_prefix'], $field['input_suffix'], $input_styles, $input_classes );
+			echo $field_description;
+			echo $after_input;
+			break;
+			}
+
+			case 'attachments_list': {
+				/* Attachments list field
 				*****************************************************************/
-				// Label
-				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
-				// Input
-				$input_classes[] = 'regular-text';
+				global $_wp_additional_image_sizes;
 				echo $before_input;
-				slt_cf_input_text( $field_name, $field_value, $field['input_prefix'], $field['input_suffix'], $input_styles, $input_classes );
+				echo '<fieldset>';
+				echo '<legend class="' . implode( ' ', $legend_classes ) . '">' . $field['label'] . '</legend>';
+				// List
+				if ( $field['attachments_list'] ) {
+					echo '<ul class="slt-cf-attachments-list slt-cf-cf">';
+					foreach ( $field['attachments_list'] as $attachment ) {
+						$mime_type = explode( '/', $attachment->post_mime_type );
+						$mime_class = ( $mime_type[0] == 'image' ) ? 'image' : 'file';
+						echo '<li class="slt-cf-' . $mime_class . '">';
+						if ( $field['attachments_list_options']['unattach_checkboxes'] ) {
+							echo '<label for="' . $field_name . '_' . $attachment->ID . '">';
+						}
+						if ( $mime_class == 'image' ) {
+							// An image
+							$image_infos = wp_get_attachment_image_src( $attachment->ID, $field['attachments_list_options']['image_display_size'] );
+							echo '<img class="slt-cf-attachment" src="' . $image_infos[0] . '" alt="">';
+						} else {
+							// A file
+							if ( in_array( $field['attachments_list_options']['image_display_size'], $_wp_additional_image_sizes ) ) {
+								// An intermediate size
+								$attachment_width = $_wp_additional_image_sizes[ $field['attachments_list_options']['image_display_size'] ]['width'];
+								$attachment_height = $_wp_additional_image_sizes[ $field['attachments_list_options']['image_display_size'] ]['height'];
+							} else {
+								// A standard size
+								$attachment_width = get_option( $field['attachments_list_options']['image_display_size'] . '_size_w' );
+								$attachment_height = get_option( $field['attachments_list_options']['image_display_size'] . '_size_h' );
+							}
+							// Decide on icon
+							$icon_class = "unknown";
+							switch ( $mime_type[0] ) {
+								case 'text': {
+									$icon_class = "txt";
+									break;
+								}
+								case 'application': {
+									switch ( $mime_type[1] ) {
+										case 'pdf': {
+											$icon_class = "pdf";
+											break;
+										}
+										case 'msword':
+										case 'vnd.openxmlformats-officedocument.wordprocessingml.document':
+										case 'vnd.oasis.opendocument.text': {
+											$icon_class = "doc";
+											break;
+										}
+									}
+									break;
+								}
+							}
+							// Output
+							echo '<div class="slt-cf-attachment file" style="background: #fff url(' . plugins_url( "img/icon-" . $icon_class . ".png", __FILE__ ) . ') no-repeat center 15px;';
+							if ( $attachment_width ) {
+								echo 'width:' . $attachment_width . 'px;';
+							}
+							if ( $attachment_height ) {
+								echo 'height:' . $attachment_height . 'px;';
+							}
+							echo '">';
+							echo '<p>' . apply_filters( 'the_title', $attachment->post_title ) . '</p>';
+							echo '</div>';
+						}
+						if ( $field['attachments_list_options']['unattach_checkboxes'] ) {
+							echo '<input type="checkbox" name="' . $field_name . '_' . $attachment->ID . '" id="' . $field_name . '_' . $attachment->ID . '" value="yes" /> Check to unattach</label>';
+						}
+						echo '</li>';
+					}
+					echo '</ul>';
+				} else {
+					echo '<p><em>No attachments to list.</em></p>';
+				}
+				echo '</fieldset>';
 				echo $field_description;
 				echo $after_input;
 				break;

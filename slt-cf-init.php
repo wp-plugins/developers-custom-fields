@@ -5,36 +5,24 @@
 
 // Global initialization
 function slt_cf_init() {
-	global $slt_custom_fields;
+	global $slt_custom_fields, $pagenow;
 
 	// Globals still to initialize (ones that use core functions with filters that aren't exposed if run earlier)
 	$slt_custom_fields['ui_css_url'] = plugins_url( 'js/jquery-ui/smoothness/jquery-ui-1.8.16.custom.css', __FILE__ );
-	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG )
-		$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.css', __FILE__ );
-	else
-		$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.min.css', __FILE__ );
-
-	// Register scripts and styles
-	wp_register_style( 'slt-cf-styles', $slt_custom_fields['css_url'] );
 	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) {
-		$slt_js_admin = plugins_url( 'js/slt-cf-admin.js', __FILE__ );
-		$slt_js_file_select = plugins_url( 'js/slt-cf-file-select.js', __FILE__ );
+		// Unminified debug stuff
+		$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.css', __FILE__ );
+		$slt_custom_fields['registration_css_url'] = plugins_url( 'css/slt-cf-registration.css', __FILE__ );
 		$slt_js_gmaps = plugins_url( 'js/slt-cf-gmaps.js', __FILE__ );
 	} else {
-		$slt_js_admin = plugins_url( 'js/slt-cf-admin.min.js', __FILE__ );
-		$slt_js_file_select = plugins_url( 'js/slt-cf-file-select.min.js', __FILE__ );
+		// Minified production stuff
+		$slt_custom_fields['css_url'] = plugins_url( 'css/slt-cf-admin.min.css', __FILE__ );
+		$slt_custom_fields['registration_css_url'] = plugins_url( 'css/slt-cf-registration.min.css', __FILE__ );
 		$slt_js_gmaps = plugins_url( 'js/slt-cf-gmaps.min.js', __FILE__ );
 	}
-	wp_register_script( 'slt-cf-scripts', $slt_js_admin, array( 'jquery' ), SLT_CF_VERSION );
-	if ( ! SLT_CF_WP_IS_GTE_3_3 ) {
-		// Register jQuery UI Datepicker for below WP 3.3
-		wp_register_script( 'jquery-ui-datepicker', plugins_url( 'js/jquery-ui/jquery-ui-1.8.16.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.8.16', true );
-	}
 
-	// Register jQuery UI Addon Timepicker for date and time fields
-	wp_register_script( 'jquery-ui-timepicker', plugins_url( 'js/jquery-ui/jquery-ui-timepicker-addon.min.js', __FILE__ ), array( 'jquery-ui-datepicker' ), '1.8.16', true );
-	wp_register_style( 'jquery-ui-smoothness', $slt_custom_fields['ui_css_url'] );
-	wp_register_script( 'slt-cf-file-select', $slt_js_file_select, array( 'jquery', 'media-upload', 'thickbox' ), SLT_CF_VERSION );
+	// Register any styles needed at the front
+	wp_register_style( 'slt-cf-registration-styles', $slt_custom_fields['registration_css_url'], array(), SLT_CF_VERSION );
 
 	/*
 	 * Google Maps stuff is registered to go in the footer, so it can be enqueued dynamically
@@ -42,77 +30,148 @@ function slt_cf_init() {
 	 */
 	wp_register_script( 'google-maps-api', SLT_CF_REQUEST_PROTOCOL . 'maps.google.com/maps/api/js?sensor=false', array(), false, true );
 	$gmaps_deps = array( 'jquery', 'jquery-ui-core' );
-	if ( ! class_exists( 'JCP_UseGoogleLibraries' ) )
+	if ( ! class_exists( 'JCP_UseGoogleLibraries' ) ) {
 		$gmaps_deps[] = 'jquery-ui-autocomplete'; // Autocomplete included in Google's jQuery UI core
+	}
 	wp_register_script( 'slt-cf-gmaps', $slt_js_gmaps, $gmaps_deps, SLT_CF_VERSION, true );
 
 	// Generic hook, mostly for dependent plugins to hook to
 	// See: http://core.trac.wordpress.org/ticket/11308#comment:7
 	do_action( 'slt_cf_init' );
+
 }
 
 // Admin initialization
 function slt_cf_admin_init() {
-	global $slt_cf_admin_notices, $slt_custom_fields, $pagenow, $wp_version;
-	$requested_file = basename( $_SERVER['SCRIPT_FILENAME'] );
+	global $slt_cf_admin_notices, $slt_custom_fields, $pagenow;
 
-	// Decide now which notices to output
+	// Notices to output?
 	$slt_cf_admin_notices = array();
-	if ( $slt_custom_fields['options']['alert-07-cleanup'] && ! ( $pagenow == 'tools.php' && array_key_exists( 'page', $_GET ) && $_GET['page'] == 'slt_cf_data_tools' ) )
-		$slt_cf_admin_notices[] = 'alert-07-cleanup';
 
-	// Scripts and styles
-	wp_enqueue_style( 'slt-cf-styles' );
-	wp_enqueue_script( 'slt-cf-scripts' );
-	$script_vars = array( 'ajaxurl' => admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ) );
-	if ( in_array( 'alert-07-cleanup', $slt_cf_admin_notices ) ) {
-		$script_vars['update_option_nonce'] = wp_create_nonce( 'slt-cf-update-option' );
-		$script_vars['update_option_fail'] = __( 'There was a problem updating the option.', 'slt-custom-fields' );
-	}
-	wp_localize_script( 'slt-cf-scripts', 'slt_custom_fields', $script_vars );
+	// WP versions below 3.3 need TinyMCE initializing; 3.3+ uses wp_editor()
 	if ( ! SLT_CF_WP_IS_GTE_3_3 ) {
-		// WP versions below 3.3 need TinyMCE initializing; 3.3+ uses wp_editor()
 		add_action( 'admin_print_footer_scripts', 'wp_tiny_mce', 25 );
 	}
-	// Datepicker
-	wp_enqueue_script( 'jquery-ui-datepicker' );
-	wp_enqueue_style( 'jquery-ui-smoothness' );
-	// Timepicker which needs the slider
-	wp_enqueue_script( 'jquery-ui-slider' );
-	wp_enqueue_script( 'jquery-ui-timepicker' );
-	// Make sure forms allow file uploads
-	if ( in_array( $requested_file, array( 'post-new.php', 'post.php' ) ) )
-		add_action( 'post_edit_form_tag' , 'slt_cf_file_upload_form' );
-	if ( in_array( $requested_file, array( 'user-edit.php', 'profile.php' ) ) )
-		add_action( 'user_edit_form_tag' , 'slt_cf_file_upload_form' );
-	// Google Maps
-	if ( SLT_CF_USE_GMAPS ) {
-		if ( SLT_CF_WP_IS_GTE_3_3 )
-			wp_enqueue_script( 'jquery-ui-autocomplete' );
-		wp_localize_script( 'slt-cf-gmaps', 'slt_cf_gmaps', array(
-			'geocoder_label'	=> esc_html__( 'Find an address', 'slt-custom-fields' )
-		));
+
+	// Determine some paths
+	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) {
+		$slt_js_admin = plugins_url( 'js/slt-cf-admin.js', __FILE__ );
+		$slt_js_file_select = plugins_url( 'js/slt-cf-file-select.js', __FILE__ );
+	} else {
+		$slt_js_admin = plugins_url( 'js/slt-cf-admin.min.js', __FILE__ );
+		$slt_js_file_select = plugins_url( 'js/slt-cf-file-select.min.js', __FILE__ );
 	}
-	// File select
-	if ( SLT_CF_USE_FILE_SELECT ) {
+
+	// Register scripts and styles
+	wp_register_script( 'slt-cf-scripts', $slt_js_admin, array( 'jquery' ), SLT_CF_VERSION );
+	wp_register_script( 'slt-cf-file-select', $slt_js_file_select, array( 'jquery', 'media-upload', 'thickbox' ), SLT_CF_VERSION );
+	wp_register_style( 'slt-cf-styles', $slt_custom_fields['css_url'] );
+
+	if ( ! SLT_CF_WP_IS_GTE_3_3 ) {
+		// Register jQuery UI Datepicker for below WP 3.3
+		wp_register_script( 'jquery-ui-datepicker', plugins_url( 'js/jquery-ui/jquery-ui-1.8.16.custom.min.js', __FILE__ ), array( 'jquery-ui-core' ), '1.8.16', true );
+	}
+
+	// Register jQuery UI Addon Timepicker for date and time fields
+	wp_register_script( 'jquery-ui-timepicker', plugins_url( 'js/jquery-ui/jquery-ui-timepicker-addon.min.js', __FILE__ ), array( 'jquery-ui-datepicker', 'jquery-ui-slider' ), '1.8.16', true );
+	wp_register_style( 'jquery-ui-smoothness', $slt_custom_fields['ui_css_url'] );
+
+	// Make sure forms allow file uploads
+	if ( in_array( $pagenow, array( 'post-new.php', 'post.php' ) ) ) {
+		add_action( 'post_edit_form_tag' , 'slt_cf_file_upload_form' );
+	}
+	if ( in_array( $pagenow, array( 'user-edit.php', 'profile.php' ) ) ) {
+		add_action( 'user_edit_form_tag' , 'slt_cf_file_upload_form' );
+	}
+
+	// Deal with any form submissions for admin screen
+	if ( array_key_exists( 'slt-cf-form', $_POST ) && check_admin_referer( 'slt-cf-' . $_POST['slt-cf-form'], '_slt_cf_nonce' ) ) {
+		call_user_func( 'slt_cf_' . $_POST['slt-cf-form'] . '_form_process' );
+	}
+
+}
+
+/**
+ * Login / registration scripts and styles
+ *
+ * @since	0.9
+ * @return	void
+ */
+function slt_cf_login_enqueue_scripts() {
+	wp_enqueue_style( 'slt-cf-registration-styles' );
+}
+
+/**
+ * Admin scripts and styles
+ *
+ * @since	0.9
+ * @return	void
+ */
+function slt_cf_admin_enqueue_scripts( $hook ) {
+	global $pagenow;
+	$screen = get_current_screen();
+	$edit_screen = in_array( $screen->base, array( 'post', 'user-edit', 'profile' ) );
+	//echo '<pre>'; print_r( $screen ); echo '</pre>'; exit;
+
+	// Check for an edit screen
+	// Also, for now include file select scripts for all "Appearance" and "Settings" pages,
+	// in case file select button is being used directly there
+	// @todo	Need a way of only including file select scripts when button is being output
+	if ( $edit_screen || in_array( $pagenow, array( 'themes.php', 'options-general.php' ) ) ) {
+
+		if ( $edit_screen ) {
+
+			// Global scripts and styles
+			wp_localize_script( 'slt-cf-scripts', 'slt_custom_fields', array(
+					'ajaxurl'	=> admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ) )
+			);
+			wp_enqueue_script( 'slt-cf-scripts' );
+			wp_enqueue_style( 'slt-cf-styles' );
+
+			// Datepicker / Timepicker
+			wp_enqueue_script( 'jquery-ui-datepicker' );
+			wp_enqueue_script( 'jquery-ui-timepicker' );
+			wp_enqueue_style( 'jquery-ui-smoothness' );
+
+			// Google Maps
+			if ( SLT_CF_USE_GMAPS ) {
+				wp_localize_script( 'slt-cf-gmaps', 'slt_cf_gmaps', array(
+					'geocoder_label'	=> esc_html__( 'Find an address', 'slt-custom-fields' )
+				));
+				// Script is enqueued by slt_cf_gmap() function
+			}
+
+			// Sortable
+			wp_enqueue_script( 'jquery-ui-sortable' );
+
+		}
+
+		// File select
+		if ( SLT_CF_USE_FILE_SELECT ) {
+			wp_enqueue_script( 'slt-cf-file-select' );
+			wp_enqueue_style( 'thickbox' );
+			wp_localize_script( 'slt-cf-file-select', 'slt_cf_file_select', array(
+				'ajaxurl'			=> admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ),
+				'text_select_file'	=> esc_html__( 'Select', 'slt-custom-fields' )
+			));
+		}
+
+	} else if ( $screen->base == 'media-upload' && array_key_exists( 'slt_cf_fs_field', $_GET ) ) {
+
+		// File select overlay
 		wp_enqueue_script( 'slt-cf-file-select' );
-		wp_enqueue_style( 'thickbox' );
 		wp_localize_script( 'slt-cf-file-select', 'slt_cf_file_select', array(
 			'ajaxurl'			=> admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ),
 			'text_select_file'	=> esc_html__( 'Select', 'slt-custom-fields' )
 		));
-		if ( ! SLT_CF_WP_IS_GTE_3_3 && $pagenow == 'media-upload.php' && array_key_exists( 'slt_cf_fs_field', $_GET ) ) {
-			// For WP versions below 3.3, disable the Flash uploader when the File select overlay is invoked
-			// The JS for this doesn't work with the Flash uploader
-			add_filter( 'flash_uploader', '__return_false', 5 );
-		}
-	}
-	// Sortable
-	wp_enqueue_script( 'jquery-ui-sortable' );
 
-	// Deal with any form submissions for admin screen
-	if ( array_key_exists( 'slt-cf-form', $_POST ) && check_admin_referer( 'slt-cf-' . $_POST['slt-cf-form'], '_slt_cf_nonce' ) )
-		call_user_func( 'slt_cf_' . $_POST['slt-cf-form'] . '_form_process' );
+	}
+
+	if ( ! SLT_CF_WP_IS_GTE_3_3 && $screen->base == 'media-upload' && array_key_exists( 'slt_cf_fs_field', $_GET ) ) {
+		// For WP versions below 3.3, disable the Flash uploader when the File select overlay is invoked
+		// The JS for this doesn't work with the Flash uploader
+		add_filter( 'flash_uploader', '__return_false', 5 );
+	}
 
 }
 
@@ -123,8 +182,10 @@ function slt_cf_admin_init() {
  * @return	void
  */
 function slt_cf_admin_menus() {
+
 	// Database tools
 	add_submenu_page( 'tools.php', SLT_CF_TITLE . ' ' . __( 'database tools', 'slt-custom-fields' ), __( 'Custom Fields data', 'slt-custom-fields' ), 'update_core', 'slt_cf_data_tools', 'slt_cf_database_tools_screen' );
+
 }
 
 /* Initialize fields
@@ -135,8 +196,8 @@ function slt_cf_admin_menus() {
  *
  * @since	0.1
  * @param	string	$request_type	'post' | 'attachment' | 'user' (corresponds to $type in slt_cf_register_box)
- * @param	string	$scope			For 'post', post_type; for 'attachment', post_mime_type; for 'user', role
- * @param	integer	$object_id		ID of object being edited
+ * @param	string	$scope			For 'post', post_type; for 'attachment', post_mime_type; for 'user', role ('registration' if registering)
+ * @param	mixed	$object_id		ID of object being edited (null for user registration)
  * @return	void
  */
 function slt_cf_init_fields( $request_type, $scope, $object_id ) {
@@ -241,9 +302,9 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> File upload fields no longer needs the SLT File Select plugin - you can remove it if you want! If you use that plugin\'s functionality elsewhere, you can now just call the functions provided by this Custom Fields plugin.', E_USER_NOTICE );
 			}
 
-			// File field types not allowed for file attachments or user profiles
-			if ( $field['type'] == 'file' && in_array( $request_type, array( 'attachment', 'user' ) ) ) {
-				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> The field <b>' . $field['name'] . '</b> is a <code>file</code> type field, which is not allowed for attachments or user profiles.', E_USER_WARNING );
+			// File + Attachments List field types not allowed for file attachments or user profiles
+			if ( in_array( $field['type'], array( 'file', 'attachments_list' ) ) && in_array( $request_type, array( 'attachment', 'user' ) ) ) {
+				trigger_error( '<b>' . SLT_CF_TITLE . ':</b> The field <b>' . $field['name'] . '</b> is a <code>' . $field['type'] . '</code> type field, which is not allowed for attachments or user profiles.', E_USER_WARNING );
 				$unset_fields[] = $field_key;
 				continue;
 			}
@@ -267,6 +328,7 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'options'					=> array(),
 				'options_query'				=> array(),
 				'group_options'				=> false,
+				'group_by_post_type'		=> false,
 				'no_options'				=> SLT_CF_NO_OPTIONS,
 				'exclude_current'			=> true,
 				'single'					=> true,
@@ -288,7 +350,8 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 				'timepicker_ampm'			=> $slt_custom_fields['timepicker_default_ampm'],
 				'location_marker'			=> true,
 				'gmap_type'					=> 'roadmap',
-				'edit_on_profile'			=> false
+				'edit_on_profile'			=> false,
+				'attachments_list_options'	=> array(),
 			);
 			// Defaults dependent on request type
 			switch ( $request_type ) {
@@ -352,13 +415,22 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 						$field['wysiwyg_settings']['media_buttons'] = false;
 					break;
 				}
+				case 'attachments_list': {
+					$attached_images_options_defaults = array(
+						'post_mime_type'			=> 'image',
+						'image_display_size'		=> 'thumbnail',
+						'unattach_checkboxes'		=> true,
+					);
+					$field['attachments_list_options'] = array_merge( $attached_images_options_defaults, $field['attachments_list_options'] );
+					break;
+				}
 			}
 
 			// Check if parameters are the right types
 			if (
 				! slt_cf_params_type( array( 'name', 'label', 'type', 'label_layout', 'file_button_label', 'input_prefix', 'input_suffix', 'description', 'options_type', 'no_options', 'empty_option_text', 'preview_size', 'datepicker_format', 'timepicker_format' ), 'string', 'field', $field ) ||
-				! slt_cf_params_type( array( 'hide_label', 'file_removeable', 'multiple', 'exclude_current', 'required', 'group_options', 'autop', 'edit_on_profile', 'timepicker_ampm', 'color_preview' ), 'boolean', 'field', $field ) ||
-				! slt_cf_params_type( array( 'scope', 'options', 'allowtags', 'options_query', 'capabilities' ), 'array', 'field', $field ) ||
+				! slt_cf_params_type( array( 'hide_label', 'file_removeable', 'multiple', 'exclude_current', 'required', 'group_options', 'group_by_post_type', 'autop', 'edit_on_profile', 'timepicker_ampm', 'color_preview' ), 'boolean', 'field', $field ) ||
+				! slt_cf_params_type( array( 'scope', 'options', 'allowtags', 'options_query', 'capabilities', 'attachments_list_options' ), 'array', 'field', $field ) ||
 				! slt_cf_params_type( array( 'width', 'height' ), 'integer', 'field', $field )
 			) {
 				$unset_fields[] = $field_key;
@@ -433,7 +505,7 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 
 			/****************************************************************************
 			From this point on, this field is considered as valid for the current request
-			****************************************************************************/
+			 ****************************************************************************/
 
 			// Gather dynamic options data?
 			if ( $field['options_type'] != 'static' ) {
@@ -505,27 +577,47 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 							if ( is_object( $post ) && property_exists( $post, 'ID' ) )
 								$field['options_query']['post__not_in'][] = $post->ID;
 						}
+						// Add sorting by post type if multiple post types, in order to group in output
+						$multiple_post_types = ( isset( $field['options_query'] ) && is_array( $field['options_query'] ) && isset( $field['options_query']['post_type'] ) && is_array( $field['options_query']['post_type'] ) && count( $field['options_query']['post_type'] ) > 1 );
+						if ( $multiple_post_types ) {
+							add_action( 'pre_get_posts', 'slt_cf_sort_queries_by_post_type' );
+						}
+						// Do query
 						$posts_query = new WP_Query( $field['options_query'] );
+						// Remove sorting by post type
+						if ( $multiple_post_types ) {
+							remove_action( 'pre_get_posts', 'slt_cf_sort_queries_by_post_type' );
+						}
 						$posts = $posts_query->posts;
 						$field['options'] = array();
 						/** @todo Heirarchical post selection
 						if ( $field['hierarchical_options'] && is_string( $field['options_query']['post_type'] ) && is_post_type_hierarchical( $field['options_query']['post_type'] ) ) {
 
 						}
-						*/
-						$current_category = array();
+						 */
+						$current_grouping = null;
 						foreach ( $posts as $post_data ) {
-							if ( $field[ 'group_options' ] ) {
+							if ( $multiple_post_types && $field[ 'group_by_post_type' ] ) {
+								// This takes precedence over group_options
+								if ( is_null( $current_grouping ) || $post_data->post_type != $current_grouping ) {
+									// New post type, initiate an option group
+									$post_type_object = get_post_type_object( $post_data->post_type );
+									// Adding prefix is necessary to avoid clashes with pages named after post types
+									$field['options'][ __( 'Post type:' ) . ' ' . $post_type_object->label ] = '[optgroup]';
+									$current_grouping = $post_data->post_type;
+								}
+							} else if ( $field[ 'group_options' ] ) {
 								$this_category = get_the_category( $post_data->ID );
-								if ( empty( $current_category ) || $this_category[0]->cat_ID != $current_category[0]->cat_ID ) {
+								if ( is_null( $current_grouping ) || $this_category[0]->cat_ID != $current_grouping[0]->cat_ID ) {
 									// New category, initiate an option group
 									$field['options'][ $this_category[0]->cat_name ] = '[optgroup]';
-									$current_category = $this_category;
+									$current_grouping = $this_category;
 								}
 							}
 							$option_text = $field['abbreviate_option_labels'] ? slt_cf_abbreviate( $post_data->post_title ) : $post_data->post_title;
 							$field['options'][ $option_text ] = $post_data->ID;
 						}
+						//echo '<pre>'; print_r( $field['options'] ); echo '</pre>'; exit;
 						break;
 					}
 
@@ -559,20 +651,20 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 						// Get terms
 						$args = $field['options_query'];
 						$taxonomies = $args['taxonomies'];
- 						$field['options'] = array();
+						$field['options'] = array();
 						/** @todo Heirarchical post selection
-					 	if ( $field['hierarchical_options'] ) {
-							$field['options_query']['hierarchical'] = true;
-							slt_cf_hierarchical_terms( $field, '&nbsp;&nbsp;&nbsp;', @intval( $args['child_of'] ) );
+						if ( $field['hierarchical_options'] ) {
+						$field['options_query']['hierarchical'] = true;
+						slt_cf_hierarchical_terms( $field, '&nbsp;&nbsp;&nbsp;', @intval( $args['child_of'] ) );
 						} else
-						*/
+						 */
 						if ( ! is_wp_error( $option_terms = get_terms( $taxonomies, $args ) ) ) {
 							foreach ( $option_terms as $option_term ) {
 								$option_text = $field['abbreviate_option_labels'] ? slt_cf_abbreviate( $option_term->name ) : $option_term->name;
 								$field['options'][ $option_text ] = $option_term->term_id;
 							}
 						}
- 						break;
+						break;
 					}
 
 					case 'countries': {
@@ -581,12 +673,28 @@ function slt_cf_init_fields( $request_type, $scope, $object_id ) {
 					}
 
 					default: {
-						// Run filter for custom option types
-						$field['options'] = apply_filters( 'slt_cf_populate_options', $field['options'], $request_type, $scope, $object_id, $field );
-						break;
+					// Run filter for custom option types
+					$field['options'] = apply_filters( 'slt_cf_populate_options', $field['options'], $request_type, $scope, $object_id, $field );
+					break;
 					}
 
 				}
+			}
+
+			// Gather attachments to list?
+			if ( $field['type'] == 'attachments_list' && is_admin() && $request_type == 'post' && isset( $post ) && is_object( $post ) ) {
+
+				// get_children() arguments
+				$get_children_args = array(
+					'post_type'			=> 'attachment',
+					'post_parent'		=> $post->ID,
+					'post_mime_type'	=> $field['attachments_list_options']['post_mime_type']
+				);
+				$get_children_args = apply_filters( 'slt_cf_attachments_list_query', $get_children_args, $object_id, $post, $field );
+
+				// Get attachments
+				$field['attachments_list'] = get_children( $get_children_args );
+
 			}
 
 		} // Fields foreach
