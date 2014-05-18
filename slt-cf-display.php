@@ -171,6 +171,9 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 			if ( $field['sortable'] ) {
 				$multi_field_classes[] = 'ui-state-default';
 			}
+			if ( $field['checkboxes_thumbnail'] ) {
+				$field_classes[] = 'thumbnails';
+			}
 		} else {
 			if ( $field['width'] && $field['type'] != 'wysiwyg' )
 				$input_styles[] = 'width:' . $field['width'] . 'em';
@@ -325,6 +328,11 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 						echo '<' . $cb_tag . ' class="' . implode( ' ', $multi_field_classes ) . '" style="' . implode( ';', $multi_field_styles ) . '">';
 						if ( $field['sortable'] ) {
 							echo '<span class="ui-icon ui-icon-arrowthick-2-n-s"></span>';
+						}
+						// Thumbnail
+						if ( $field['checkboxes_thumbnail'] && $field['options_query']['post_type'] == 'attachment' && $field['options_query']['post_mime_type'] == 'image' ) {
+							$checkbox_thumbnail =  wp_get_attachment_image_src( $value, apply_filters( 'slt_cf_checkboxes_thumbnail_size', 'thumbnail' ) );
+							echo '<img src="' . $checkbox_thumbnail[0] . '" alt="' . get_the_title( $value ) . ' thumbnail"> ';
 						}
 						// Input
 						echo '<input type="checkbox" name="' . $field_name . '_' . $value . '" id="' . $field_name . '_' . $value . '" value="yes"';
@@ -569,18 +577,18 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				break;
 			}
 
-			default: {
-			/* Plain text field
-			*****************************************************************/
-			// Label
-			echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
-			// Input
-			$input_classes[] = 'regular-text';
-			echo $before_input;
-			slt_cf_input_text( $field_name, $field_value, $field['input_prefix'], $field['input_suffix'], $input_styles, $input_classes );
-			echo $field_description;
-			echo $after_input;
-			break;
+			case 'colorpicker': {
+				/* Color picker field
+				*****************************************************************/
+				// Label
+				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
+				// Input
+				$input_classes[] = 'slt-cf-colorpicker';
+				echo $before_input;
+				slt_cf_input_text( $field_name, $field_value, $field['input_prefix'] . ' #', $field['input_suffix'], $input_styles, $input_classes );
+				echo $field_description;
+				echo $after_input;
+				break;
 			}
 
 			case 'attachments_list': {
@@ -660,6 +668,20 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 					echo '<p><em>No attachments to list.</em></p>';
 				}
 				echo '</fieldset>';
+				echo $field_description;
+				echo $after_input;
+				break;
+			}
+
+			default: {
+				/* Plain text field
+				*****************************************************************/
+				// Label
+				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
+				// Input
+				$input_classes[] = 'regular-text';
+				echo $before_input;
+				slt_cf_input_text( $field_name, $field_value, $field['input_prefix'], $field['input_suffix'], $input_styles, $input_classes );
 				echo $field_description;
 				echo $after_input;
 				break;

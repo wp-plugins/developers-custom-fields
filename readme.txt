@@ -3,8 +3,8 @@ Contributors: gyrus, adriantoll, saurabhshukla
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.0
-Tested up to: 3.8.2
-Stable tag: 0.9
+Tested up to: 3.9.1
+Stable tag: 0.9.1
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
@@ -91,6 +91,12 @@ Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Develope
 **NOTE:** Some people have found compatibility issues between the [WPMU DEV Events+](http://premium.wpmudev.org/project/events-plus/) plugin and this plugin (see [here](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/23) and [here](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/24)). If you find an apparent issue with this plugin and you're also using WPMU DEV Events+, please check for incompatibilities before posting an issue.
 
 == Changelog ==
+= 0.9.1 =
+* Fix for conflict with other plugins that add media upload buttons to taxonomies (thanks [juicboxint](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/30)!)
+* Fix for `wp_get_attachment_image_src()` array elements not able to be referenced directly
+* Added `checkboxes_thumbnail` parameter, to include a thumbnail when listing image attachments with multiple checkboxes
+* Added `colorpicker` field type, using http://www.eyecon.ro/colorpicker
+
 = 0.9 =
 * Fixed issue with sortable checkboxes where new options don't appear in list
 * Added `group_by_post_type` parameter, to group multiple post type queries by post type
