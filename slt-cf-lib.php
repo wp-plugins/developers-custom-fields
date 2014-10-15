@@ -50,13 +50,11 @@ function slt_cf_field_key( $key, $object_type = 'post' ) {
 	return slt_cf_prefix( $object_type ) . $key;
 }
 
-/* Return the right prefix (attachment postmeta pre-3.5 shouldn't start with an underscore)
+/* Return the right prefix
 ***************************************************************************************/
 function slt_cf_prefix( $object_type = 'post' ) {
 	global $slt_custom_fields;
 	$prefix = $slt_custom_fields['prefix'];
-	if ( $object_type == 'attachment' && ! SLT_CF_WP_IS_GTE_3_5 && substr( $prefix, 0, 1 ) == '_' )
-		$prefix = substr( $prefix, 1 );
 	return $prefix;
 }
 
@@ -220,6 +218,28 @@ function slt_cf_field_exists( $key, $type = 'post', $id = 0 ) {
 	return $field_exists;
 }
 
+/**
+ * Return an array of all fields for the current request of a certain type
+ *
+ * @since	0.1
+ * @param	string	$type
+ * @return	array
+ */
+function slt_cf_current_fields_of_type( $type = '' ) {
+	global $slt_custom_fields;
+	$fields = array();
+
+	foreach ( $slt_custom_fields['boxes'] as $box ) {
+		foreach ( $box['fields'] as $field ) {
+			if ( $field['type'] == $type ) {
+				$fields[] = $field;
+			}
+		}
+	}
+
+	return $fields;
+}
+
 /* Get all fields applied to an object
 ***************************************************************************************/
 function slt_cf_get_current_fields( $type = 'post', $id = 0 ) {
@@ -295,6 +315,18 @@ function slt_cf_check_scope( $field, $request_type, $request_scope, $object_id )
 				$page_template = $custom_fields[0];
 				foreach ( (array) $scope_value as $scope_template ) {
 					if ( $scope_template == $page_template ) {
+						$scope_match = true;
+						break;
+					}
+				}
+				if ( $scope_match )
+					break;
+
+			} else if ( is_string( $scope_key ) && $request_type == 'post' && $scope_key == 'post_format' && get_post_type( $object_id ) == 'post' ) {
+
+				// Post format matching matching
+				foreach ( (array) $scope_value as $scope_format_name ) {
+					if ( has_post_format( $scope_format_name, $object_id ) ) {
 						$scope_match = true;
 						break;
 					}
@@ -811,7 +843,7 @@ if ( SLT_CF_USE_FILE_SELECT ) :
  */
 function slt_cf_file_select_button( $name, $value = 0, $label = 'Select file', $preview_size = 'thumbnail', $removable = true, $attach_to_post = true ) { ?>
 	<div>
-		<input type="button" class="button-secondary slt-cf-fs-button" value="<?php echo esc_attr( $label ); ?>" />
+		<input type="button" id="<?php echo esc_attr( $name ); ?>_button" class="button-secondary slt-cf-fs-button" value="<?php echo esc_attr( $label ); ?>" />
 		<?php if ( $value && $removable ) { ?>
 			&nbsp;&nbsp;<input type="checkbox" name="<?php echo esc_attr( $name ); ?>_remove" value="1" class="slt-cf-fs-remove" /> <label for="<?php echo esc_attr( $name ); ?>_remove"><?php _e( 'Remove', 'slt-custom-fields' ); ?></label>
 		<?php } ?>
@@ -831,19 +863,6 @@ function slt_cf_file_select_button( $name, $value = 0, $label = 'Select file', $
 		}
 	?></div>
 <?php }
-
-// Add a JS call to media item output so the file select button can be placed for new uploads
-add_filter( 'attachment_fields_to_edit', 'slt_cf_file_select_new_upload', 10, 2 );
-function slt_cf_file_select_new_upload( $fields, $post ) {
-	static $count = 0;
-	if ( substr( $post->post_mime_type, 0, 5 ) == 'image' ) {
-		$fields['slt_cf_file_select'] = array(
-			'tr' => '<tr id="slt-cf-new-upload-button-' . $count .'"><th></th><td><script type="text/javascript"> if ( typeof slt_fs_new_upload_button == "function") {  slt_fs_new_upload_button( ' . $count .' ); } </script></td></tr>'
-		);
-		$count++;
-	}
-	return $fields;
-}
 
 // Generate markup for file link
 function slt_cf_file_select_link( $id ) {

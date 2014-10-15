@@ -2,9 +2,9 @@
 Contributors: gyrus, adriantoll, saurabhshukla
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
-Requires at least: 3.0
-Tested up to: 3.9.1
-Stable tag: 0.9.1
+Requires at least: 3.5
+Tested up to: 4.0
+Stable tag: 1.0
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
@@ -91,10 +91,23 @@ Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Develope
 **NOTE:** Some people have found compatibility issues between the [WPMU DEV Events+](http://premium.wpmudev.org/project/events-plus/) plugin and this plugin (see [here](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/23) and [here](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/24)). If you find an apparent issue with this plugin and you're also using WPMU DEV Events+, please check for incompatibilities before posting an issue.
 
 == Changelog ==
+= 1.0 =
+* Dropped support for WP < 3.5 (please update WP, or stick with DCF 0.9.1 if you really have to!)
+* Updated `file` field type and `slt_cf_file_select_button` function to use WP 3.5+ media upload API
+* Added `file_restrict_to_type` parameter for file upload fields
+* Added `file_dialog_title` parameter for file upload fields
+* Changed `file_removeable` to work server-side instead of client side wiping of hidden input value
+* Added `tabindex` parameter
+* Added `$field` as parameter for `slt_cf_checkboxes_thumbnail_size` filter
+* Added post formats to scoping
+* Fixed small bug in all post meta output box, which showed `0` as `null`
+* Added Google Maps API key support with `SLT_CF_GMAPS_API_KEY`
+
 = 0.9.1 =
 * Fix for conflict with other plugins that add media upload buttons to taxonomies (thanks [juicboxint](https://github.com/gyrus/WordPress-Developers-Custom-Fields/issues/30)!)
 * Fix for `wp_get_attachment_image_src()` array elements not able to be referenced directly
 * Added `checkboxes_thumbnail` parameter, to include a thumbnail when listing image attachments with multiple checkboxes
+* Added `slt_cf_checkboxes_thumbnail_size` filter
 * Added `colorpicker` field type, using http://www.eyecon.ro/colorpicker
 
 = 0.9 =

@@ -46,47 +46,6 @@ function slt_cf_add_user_profile_sections( $user ) {
 }
 
 /**
- * Add fields to an attachment screen for pre-3.5
- * No boxes / sections, just loop through all fields
- *
- * @since	0.6
- * @param	array	$form_fields
- * @param	object	$post
- * @return	array
- */
-function slt_cf_add_attachment_fields( $form_fields, $post ) {
-	global $slt_custom_fields;
-	foreach ( $slt_custom_fields['boxes'] as $box_key => $box ) {
-		foreach ( $box['fields'] as $field ) {
-			// Only certain fields types allowed for now
-			if ( ! in_array( $field['type'], array( 'text', 'select' ) ) )
-				continue;
-			// Add into form fields array
-			$field_name = slt_cf_prefix( 'attachment' ) . $field['name'];
-			$form_fields[ $field_name ] = array();
-			$form_fields[ $field_name ]['label'] = $field['label'];
-			$form_fields[ $field_name ]['value'] = slt_cf_field_value( $field['name'], 'attachment', $post->ID, '', '', false, $field['single'] );
-			$form_fields[ $field_name ]['input'] = 'html';
-			$input_field_name = "attachments[{$post->ID}][{$field_name}]";
-			switch ( $field['type'] ) {
-				case 'select': {
-					$form_fields[ $field_name ]['html'] = slt_cf_input_select( $input_field_name, $form_fields[ $field_name ]['value'], $field['input_prefix'], $field['input_suffix'], array(), array(), false, $field['options'], $field['multiple'], ( $field['options_type'] != 'static' && ! $field['required'] ), $field['empty_option_text'], $field['no_options'] );
-					break;
-				}
-				case 'text': {
-					$form_fields[ $field_name ]['html'] = slt_cf_input_text( $input_field_name, $form_fields[ $field_name ]['value'], $field['input_prefix'], $field['input_suffix'], array(), array(), false );
-					break;
-				}
-			}
-			if ( $field['description'] )
-				$form_fields[ $field_name ]['helps'] = $field['description'];
-		}
-	}
-	return $form_fields;
-}
-
-
-/**
  * Display a box's fields
  *
  * @since		0.1
@@ -247,6 +206,14 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 		if ( $field['description'] )
 			$field_description .= '<p class="description"><i>' . $field['description'] . '</i></p>';
 
+		// Tab index
+		$tabindex = null;
+		if ( is_numeric( $field['tabindex'] ) || $field['tabindex'] == '-1' ) {
+			$tabindex = $field['tabindex'];
+		} else if ( is_string( $field['tabindex'] ) && function_exists( $field['tabindex'] ) ) {
+			$tabindex = call_user_func( $field['tabindex'] );
+		}
+
 		// Which type of field?
 		switch ( $field['type'] ) {
 
@@ -331,7 +298,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 						}
 						// Thumbnail
 						if ( $field['checkboxes_thumbnail'] && $field['options_query']['post_type'] == 'attachment' && $field['options_query']['post_mime_type'] == 'image' ) {
-							$checkbox_thumbnail =  wp_get_attachment_image_src( $value, apply_filters( 'slt_cf_checkboxes_thumbnail_size', 'thumbnail' ) );
+							$checkbox_thumbnail =  wp_get_attachment_image_src( $value, apply_filters( 'slt_cf_checkboxes_thumbnail_size', 'thumbnail', $field ) );
 							echo '<img src="' . $checkbox_thumbnail[0] . '" alt="' . get_the_title( $value ) . ' thumbnail"> ';
 						}
 						// Input
@@ -405,8 +372,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				echo $before_label . '<label for="' . $field_name .'" class="' . implode( ' ', $label_classes ) . '">' . $field['label'] . '</label>' . $after_label;
 				// Input
 				echo $before_input;
-				// Make sure textarea isn't output for WYSIWYG for 3.3 and above, wp_editor handles that
-				if ( $field['type'] != 'wysiwyg' || ! SLT_CF_WP_IS_GTE_3_3 ) {
+				if ( $field['type'] != 'wysiwyg' ) {
 					if ( $request_type == 'user' && ! is_object( $object ) ) {
 						// Proper styling for registration form
 						$input_classes[] = 'input';
@@ -424,22 +390,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				}
 				// WYSIWYG
 				if ( $field['type'] == 'wysiwyg' ) {
-					if ( SLT_CF_WP_IS_GTE_3_3 ) {
-						// For 3.3 and above - simple :)
-						wp_editor( $field_value, $field_name, $field['wysiwyg_settings'] );
-					} else {
-						// For versions below 3.3
-						?>
-						<script type="text/javascript">
-							jQuery( document ).ready( function() {
-								jQuery( "<?php echo $field_name; ?>" ).addClass( 'mceEditor' );
-								if ( typeof( tinyMCE ) == 'object' && typeof( tinyMCE.execCommand ) == 'function' ) {
-									tinyMCE.execCommand( 'mceAddControl', false, '<?php echo $field_name; ?>' );
-								}
-							});
-						</script>
-					<?php
-					}
+					wp_editor( $field_value, $field_name, $field['wysiwyg_settings'] );
 				}
 				echo $field_description;
 				echo $after_input;
@@ -681,7 +632,7 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 				// Input
 				$input_classes[] = 'regular-text';
 				echo $before_input;
-				slt_cf_input_text( $field_name, $field_value, $field['input_prefix'], $field['input_suffix'], $input_styles, $input_classes );
+				slt_cf_input_text( $field_name, $field_value, $field['input_prefix'], $field['input_suffix'], $input_styles, $input_classes, true, $tabindex );
 				echo $field_description;
 				echo $after_input;
 				break;
@@ -714,17 +665,24 @@ function slt_cf_display_box( $object, $custom_data, $request_type = 'post' ) {
 ***************************************************************************/
 
 // Plain text
-function slt_cf_input_text( $field_name, $field_value = '', $prefix = '', $suffix = '', $input_styles = array(), $input_classes = array(), $echo = true ) {
+function slt_cf_input_text( $field_name, $field_value = '', $prefix = '', $suffix = '', $input_styles = array(), $input_classes = array(), $echo = true, $tabindex = null ) {
 	$output = '';
-	if ( $prefix )
+	if ( $prefix ) {
 		$output .= $prefix . ' ';
-	$output .= '<input type="text" name="' . esc_attr( $field_name ) . '" id="' . esc_attr( $field_name ) . '" value="' . esc_html( $field_value ) . '" style="' . esc_attr( implode( ';', $input_styles ) ) . '" class="' . esc_attr( implode( ' ', $input_classes ) ) . '" />';
-	if ( $suffix )
+	}
+	$output .= '<input type="text" name="' . esc_attr( $field_name ) . '" id="' . esc_attr( $field_name ) . '" value="' . esc_html( $field_value ) . '" style="' . esc_attr( implode( ';', $input_styles ) ) . '" class="' . esc_attr( implode( ' ', $input_classes ) ) . '"';
+	if ( is_numeric( $tabindex ) || $tabindex == '-1' ) {
+		$output .= ' tabindex="' . $tabindex . '"';
+	}
+	$output .= ' />';
+	if ( $suffix ) {
 		$output .= ' ' . $suffix;
-	if ( $echo )
+	}
+	if ( $echo ) {
 		echo $output;
-	else
+	} else {
 		return $output;
+	}
 }
 
 // Select
@@ -815,7 +773,7 @@ function slt_cf_postmeta_output() {
 		echo '<td align="left" valign="top">';
 		foreach ( $values as $value ) {
 			echo '<div>';
-			if ( ! empty( $value ) ) {
+			if ( strlen( $value ) ) {
 				if ( is_serialized( $value ) ) {
 					echo '<pre>'; print_r( unserialize( $value ) ); echo '</pre>';
 				} else {

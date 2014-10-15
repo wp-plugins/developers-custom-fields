@@ -27,8 +27,9 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 
 		// Check meta box nonce
 		$nonce_prefix = '';
-		if ( $request_type == 'post' || ( SLT_CF_WP_IS_GTE_3_5 && $request_type == 'attachment' ) )
+		if ( $request_type == 'post' || $request_type == 'attachment' ) {
 			$nonce_prefix = slt_cf_prefix( $request_type ) . $box['id'];
+		}
 
 		if ( ! $nonce_prefix || ( isset( $_POST[ $nonce_prefix . '_wpnonce' ] ) && wp_verify_nonce( $_POST[ $nonce_prefix . '_wpnonce' ], $nonce_prefix . '_save' ) ) ) {
 
@@ -73,6 +74,11 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 					}
 
 					continue;
+
+				} else if ( $field['type'] == 'file' && $field['file_removeable'] && isset( $_POST[ $field_name . '_remove' ] ) ) {
+
+					// Remove a file
+					$value = null;
 
 				} else if ( $field['type'] == 'checkboxes' ) {
 
@@ -163,7 +169,7 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 							foreach ( $value as $value_item )
 								add_metadata( $metadata_type, $object_id, $field_name, $value_item, false );
 						}
-					} else if ( $value === '' ) {
+					} else if ( $value === '' || is_null( $value ) ) {
 						// Delete field if it exists (and don't create it if it doesn't!)
 						delete_metadata( $metadata_type, $object_id, $field_name );
 					} else {
@@ -178,10 +184,6 @@ function slt_cf_save( $request_type, $object_id, $object, $extras = array() ) {
 		} // Nonce check if
 
 	} // Boxes foreach
-
-	// Return $post for attachments pre-3.5 (it's a filter, not an action!)
-	if ( $request_type == 'attachment' && ! SLT_CF_WP_IS_GTE_3_5 )
-		return $object;
 
 }
 

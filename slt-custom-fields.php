@@ -9,7 +9,7 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 0.9.1
+Version: 1.0
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 */
@@ -31,8 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /*
 Inspired by
-- http://wordpressapi.com/2010/11/22/file-upload-with-add_meta_box-or-custom_post_type-in-wordpress/ (file upload code)
 - http://snipplr.com/view/6108/mini-textile-class/ (simple textile formatting)
+- https://github.com/thomasgriffin/New-Media-Image-Uploader
 */
 
 // Make sure we don't expose any info if called directly
@@ -47,9 +47,7 @@ global $slt_custom_fields, $wp_version;
 define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', 'slt-custom-fields' ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
-define( 'SLT_CF_VERSION', '0.9.1' );
-define( 'SLT_CF_WP_IS_GTE_3_3', version_compare( round( $wp_version, 1 ), '3.3' ) >= 0 );
-define( 'SLT_CF_WP_IS_GTE_3_5', version_compare( round( $wp_version, 1 ), '3.5' ) >= 0 );
+define( 'SLT_CF_VERSION', '1.0' );
 $slt_custom_fields = array();
 $slt_custom_fields['prefix'] = '_slt_';
 $slt_custom_fields['hide_default_custom_meta_box'] = true;
@@ -132,11 +130,6 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 	add_action( 'edit_user_profile', 'slt_cf_display_user', 12, 1 );
 	add_action( 'register_form', 'slt_cf_display_user', 12 );
 
-	// Media attachment handling for pre-3.5
-	if ( ! SLT_CF_WP_IS_GTE_3_5 ) {
-		add_filter( 'attachment_fields_to_edit', 'slt_cf_display_attachment_pre35', 10, 2 );
-	}
-
 	// Display for a post / attachment screen
 	function slt_cf_display_post_attachment( $context, $object ) {
 		global $slt_custom_fields;
@@ -156,16 +149,6 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 			if ( current_user_can( 'update_core' ) )
 				add_meta_box( 'slt_cf_postmeta_output', __( 'All post meta' ), 'slt_cf_postmeta_output', null, 'advanced', 'low' );
 		}
-	}
-
-	// Display for an attachment screen (pre-3.5)
-	function slt_cf_display_attachment_pre35( $form_fields, $post ) {
-		global $slt_custom_fields;
-		slt_cf_init_fields( 'attachment', $post->post_mime_type, $post->ID );
-		if ( count( $slt_custom_fields['boxes'] ) ) {
-			$form_fields = slt_cf_add_attachment_fields( $form_fields, $post );
-		}
-		return $form_fields;
 	}
 
 	// Display for a user screen / registration form
@@ -191,14 +174,8 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 	add_action( 'personal_options_update', 'slt_cf_save_user', 1, 1 );
 	add_action( 'edit_user_profile_update', 'slt_cf_save_user', 1, 1 );
 	add_action( 'user_register', 'slt_cf_save_user', 1, 1 );
-
-	// Media attachment handling for pre- and post-3.5
-	if ( ! SLT_CF_WP_IS_GTE_3_5 ) {
-		add_filter( 'attachment_fields_to_save', 'slt_cf_save_attachment_pre35', 10, 2 );
-	} else {
-		add_action( 'add_attachment', 'slt_cf_save_attachment', 1 );
-		add_action( 'edit_attachment', 'slt_cf_save_attachment', 1 );
-	}
+	add_action( 'add_attachment', 'slt_cf_save_attachment', 1 );
+	add_action( 'edit_attachment', 'slt_cf_save_attachment', 1 );
 
 	// Save for a post screen
 	function slt_cf_save_post( $post_id, $post ) {
@@ -213,7 +190,7 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 		}
 	}
 
-	// Save for an attachment screen post-3.5
+	// Save for an attachment screen
 	function slt_cf_save_attachment( $post_id ) {
 		global $slt_custom_fields;
 		$post = get_post( $post_id );
@@ -225,16 +202,6 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 		if ( count( $slt_custom_fields['boxes'] ) ) {
 			slt_cf_save( 'attachment', $post_id, $post );
 		}
-	}
-
-	// Save for an attachment screen pre-3.5
-	function slt_cf_save_attachment_pre35( $post, $attachment ) {
-		global $slt_custom_fields;
-		slt_cf_init_fields( 'attachment', $post['post_mime_type'], $post['ID'] );
-		if ( count( $slt_custom_fields['boxes'] ) ) {
-			$post = slt_cf_save( 'attachment', $post['ID'], $post, $attachment );
-		}
-		return $post;
 	}
 
 	// Save for a user screen
