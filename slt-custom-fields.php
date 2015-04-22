@@ -9,7 +9,7 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 1.0.1
+Version: 1.1
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 Text Domain: slt-custom-fields
@@ -50,7 +50,8 @@ define( 'SLT_CF_TEXT_DOMAIN', 'slt-custom-fields' );
 define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', SLT_CF_TEXT_DOMAIN ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
-define( 'SLT_CF_VERSION', '1.0.1' );
+define( 'SLT_CF_VERSION', '1.1' );
+define( 'SLT_CF_PRIMARY_FILE_PATH', plugin_basename( __FILE__ ) );
 $slt_custom_fields = array();
 $slt_custom_fields['prefix'] = '_slt_';
 $slt_custom_fields['hide_default_custom_meta_box'] = true;
@@ -58,12 +59,19 @@ $slt_custom_fields['datepicker_default_format'] = 'dd/mm/yy';
 $slt_custom_fields['timepicker_default_format'] = 'hh:mm';
 $slt_custom_fields['timepicker_default_ampm'] = false;
 $slt_custom_fields['boxes'] = array();
+$slt_custom_fields['query_vars'] = array();
 
 // Constants that can be overridden in wp-config.php
-if ( ! defined( 'SLT_CF_USE_GMAPS' ) )
+if ( ! defined( 'SLT_CF_USE_GMAPS' ) ) {
 	define( 'SLT_CF_USE_GMAPS', true );
-if ( ! defined( 'SLT_CF_USE_FILE_SELECT' ) )
+}
+if ( ! defined( 'SLT_CF_USE_FILE_SELECT' ) ) {
 	define( 'SLT_CF_USE_FILE_SELECT', true );
+}
+if ( ! defined( 'SLT_CF_HANDLE_TERM_SPLITTING' ) ) {
+	define( 'SLT_CF_HANDLE_TERM_SPLITTING', false );
+}
+
 
 /* Options stored in database
 ***************************************************************************************/
@@ -109,6 +117,7 @@ function slt_cf_init_options() {
 	return $options;
 }
 
+
 /* Initialize
 ***************************************************************************************/
 add_action( 'init', 'slt_cf_init' );
@@ -122,6 +131,9 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 	add_action( 'admin_enqueue_scripts', 'slt_cf_admin_enqueue_scripts' ); // Scripts and styles
 	add_action( 'admin_menu', 'slt_cf_admin_menus' );
 	add_action( 'admin_notices', 'slt_cf_admin_notices' );
+	if ( defined( 'SLT_CF_HANDLE_TERM_SPLITTING' ) && SLT_CF_HANDLE_TERM_SPLITTING ) {
+		add_action( 'split_shared_term', 'slt_cf_split_shared_term', 10, 4 );
+	}
 
 	// Login / register styles
 	add_action( 'login_enqueue_scripts', 'slt_cf_login_enqueue_scripts', 10 );
@@ -233,4 +245,4 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 // Leave these functions available for AJAX requests
 require_once( 'slt-cf-init.php' );
 require_once( 'slt-cf-lib.php' );
-
+require_once( 'slt-cf-query-vars.php' );
