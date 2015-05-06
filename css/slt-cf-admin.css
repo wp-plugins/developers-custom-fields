@@ -1,4 +1,4 @@
-/* Developer's Custom Fields CSS
+/* Developer's Custom Fields admin CSS
 *********************************************************************/
 /* Clearfix */
 .slt-cf-cf:before,
@@ -14,24 +14,22 @@
 .slt-cf-cf {
   zoom: 1;
 }
-div.slt-cf-warning,
-div.slt-cf-alert {
-  border-width: 1px;
-  border-style: solid;
-  padding: 0 0.6em;
-  -moz-border-radius: 3px;
-  -khtml-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
-  margin: 5px 0 15px;
+/* Notices */
+.slt-cf-dismiss {
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  color: #0073aa;
+  cursor: pointer;
 }
-div.slt-cf-warning {
-  background-color: #FFEBE8;
-  border-color: #C00;
+.slt-cf-dismiss:before {
+  margin: .1em .1em 0 0;
+  color: #c00;
+  font-size: 16px;
 }
-div.slt-cf-alert {
-  background-color: #ffffe0;
-  border-color: #e6db55;
+.slt-cf-dismiss:hover,
+.slt-cf-dismiss:focus {
+  color: #00a0d2;
 }
 /* Multiple input fields */
 div.slt-cf-fixed-width {

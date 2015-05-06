@@ -46,6 +46,10 @@ function slt_cf_manage_query_string( $query ) {
 		// Get custom taxonomies in case we need to deal with them
 		$custom_taxonomies = get_taxonomies( array( '_builtin' => false ) );
 
+		// Init matching type for multiple values
+		$matching = $query->get( 'dcf_query_string_matching' );
+		$matching = ( $matching == 'exclusive' ) ? 'exclusive' : 'inclusive';
+
 		// Go through the query vars already parsed by the main request, and add in
 		foreach ( $wp->query_vars as $key => $value ) {
 
@@ -55,10 +59,14 @@ function slt_cf_manage_query_string( $query ) {
 				// Check if it's a custom field query var
 				if ( in_array( $key, $slt_custom_fields['query_vars'] ) ) {
 
+					// Get current meta query
+					$current_meta_query = is_array( $query->get( 'meta_query' ) ) ? $query->get( 'meta_query' ) : array();
+					$new_clauses = array();
+
 					// Set up if this is the Simple Events date field
-					$compare = '=';
 					if ( defined( 'SLT_SE_EVENT_DATE_FIELD' ) && $key == SLT_SE_EVENT_DATE_FIELD && defined( 'SLT_SE_EVENT_DATE_QUERY_VAR_FORMAT' ) && SLT_SE_EVENT_DATE_QUERY_VAR_FORMAT ) {
-						$compare = 'BETWEEN';
+
+						// Decide on the from / to boundaries of the range being filtered for
 						switch ( SLT_SE_EVENT_DATE_QUERY_VAR_FORMAT ) {
 							case 'Y': {
 								$from_date = $value . '/01/01';
@@ -73,19 +81,98 @@ function slt_cf_manage_query_string( $query ) {
 								break;
 							}
 						}
-						$value = array(
-							$from_date . ' 00:00',
-							$to_date . ' 23:59'
+
+						// If Simple Events version doesn't have end date, or we don't have WP 4.1+, simple test
+						if ( ! defined( 'SLT_SE_EVENT_END_DATE_FIELD' ) || version_compare( get_bloginfo( 'version' ), '4.1', '<' ) ) {
+
+							$new_clauses[] = array(
+								'key'		=> slt_cf_field_key( $key ),
+								'value'		=> array(
+									$from_date . ' 00:00',
+									$to_date . ' 23:59'
+								),
+								'compare'	=> 'BETWEEN',
+							);
+
+						// With end date involved, more complex tests
+						} else {
+
+							// Start date is in range
+							// OR end date is in range
+							// OR start date is before range AND end date is after range
+							$new_clauses[] = array(
+								'relation'		=> 'OR',
+								array(
+									'key'		=> slt_cf_field_key( SLT_SE_EVENT_DATE_FIELD ),
+									'value'		=> array(
+										$from_date . ' 00:00',
+										$to_date . ' 23:59'
+									),
+									'compare'	=> 'BETWEEN',
+								),
+								array(
+									'key'		=> slt_cf_field_key( SLT_SE_EVENT_END_DATE_FIELD ),
+									'value'		=> array(
+										$from_date . ' 00:00',
+										$to_date . ' 23:59'
+									),
+									'compare'	=> 'BETWEEN',
+								),
+								array(
+									'relation'		=> 'AND',
+									array(
+										'key'		=> slt_cf_field_key( SLT_SE_EVENT_DATE_FIELD ),
+										'value'		=> $from_date . ' 00:00',
+										'compare'	=> '<',
+									),
+									array(
+										'key'		=> slt_cf_field_key( SLT_SE_EVENT_END_DATE_FIELD ),
+										'value'		=> $to_date . ' 23:59',
+										'compare'	=> '>',
+									),
+								),
+							);
+
+						}
+
+
+					} else if ( is_array( $value ) ) {
+
+						// Add each item in array separately if exclusive matching
+						if ( $matching == 'exclusive' ) {
+
+							foreach ( $value as $value_item ) {
+								$new_clauses[] = array(
+									'key'		=> slt_cf_field_key( $key ),
+									'value'		=> $value_item,
+									'compare'	=> '=',
+								);
+							}
+
+						// Or add item in with 'IN' comparison for inclusive matching
+						} else {
+
+							$new_clauses[] = array(
+								'key'		=> slt_cf_field_key( $key ),
+								'value'		=> $value,
+								'compare'	=> 'IN',
+							);
+
+						}
+
+					} else {
+
+						// Simple pass-through
+						$new_clauses[] = array(
+							'key'		=> slt_cf_field_key( $key ),
+							'value'		=> $value,
+							'compare'	=> '=',
 						);
+
 					}
 
-					// Add to meta_query
-					$current_meta_query = is_array( $query->get( 'meta_query' ) ) ? $query->get( 'meta_query' ) : array();
-					$query->set( 'meta_query', array_merge( $current_meta_query, array( array(
-						'key'		=> slt_cf_field_key( $key ),
-						'value'		=> $value,
-						'compare'	=> $compare,
-					))));
+					// Add clauses to meta_query
+					$query->set( 'meta_query', array_merge( $current_meta_query, $new_clauses ) );
 
 				// Handle taxonomies?
 				} else if ( ! $query->get( 'dcf_custom_field_query_vars_only' ) ) {
@@ -96,7 +183,8 @@ function slt_cf_manage_query_string( $query ) {
 						// Add to tax_query
 						$query->set( 'tax_query', array_merge( $query->get( 'tax_query' ), array( array(
 							'taxonomy'	=> $key,
-							'terms'		=> $value
+							'terms'		=> $value,
+							'operator'	=> ( $matching == 'exclusive' ) ? 'AND' : 'IN'
 						))));
 
 					}

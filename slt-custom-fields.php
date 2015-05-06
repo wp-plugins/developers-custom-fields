@@ -9,7 +9,7 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 1.1.1
+Version: 1.2
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 Text Domain: slt-custom-fields
@@ -50,7 +50,7 @@ define( 'SLT_CF_TEXT_DOMAIN', 'slt-custom-fields' );
 define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', SLT_CF_TEXT_DOMAIN ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
-define( 'SLT_CF_VERSION', '1.1.1' );
+define( 'SLT_CF_VERSION', '1.2' );
 define( 'SLT_CF_PRIMARY_FILE_PATH', plugin_basename( __FILE__ ) );
 $slt_custom_fields = array();
 $slt_custom_fields['prefix'] = '_slt_';
@@ -236,7 +236,6 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 
 	/* Includes
 	***************************************************************************************/
-	require_once( 'slt-cf-admin.php' );
 	require_once( 'slt-cf-display.php' );
 	require_once( 'slt-cf-save.php' );
 
@@ -244,5 +243,6 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 
 // Leave these functions available for AJAX requests
 require_once( 'slt-cf-init.php' );
+require_once( 'slt-cf-admin.php' );
 require_once( 'slt-cf-lib.php' );
 require_once( 'slt-cf-query-vars.php' );

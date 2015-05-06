@@ -5,6 +5,7 @@ jQuery( document ).ready( function($) {
 	var	cp = $( '.slt-cf-color-preview' ),
 		cpick = $( 'input.slt-cf-colorpicker' ),
 		s = $( '.slt-cf-sortable' ),
+		n = $( '.slt-cf-notice' ),
 		i, box;
 
 	/* Move meta boxes above content editor
@@ -64,6 +65,29 @@ jQuery( document ).ready( function($) {
 
 	/* Handling notices
 	*****************************************************************/
+	if ( n.length ) {
+		n.on( 'click', '.slt-cf-dismiss', function( e ) {
+			e.preventDefault();
+			var el = $( this );
+			var ns = el.data( 'notice-slug' );
+			$.post(
+				slt_custom_fields.ajaxurl,
+				{
+					'action': 'slt_cf_notice_dismiss',
+					'notice': ns,
+					'notice-dismiss-nonce': slt_custom_fields[ 'notice_nonce_' + ns ]
+				},
+				function( r ) {
+					console.log( r );
+					if ( r == 'ok' ) {
+						el.parents( '.slt-cf-notice' ).fadeOut( 600, function() { $( this ).remove(); } );
+					} else {
+						alert( 'There was a problem with dimissing this notice.' );
+					}
+				}
+			);
+		});
+	}
 
 
 	/* Cloning

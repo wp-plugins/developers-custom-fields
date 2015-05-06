@@ -48,9 +48,30 @@ function slt_cf_init() {
 // Admin initialization
 function slt_cf_admin_init() {
 	global $slt_cf_admin_notices, $slt_custom_fields, $pagenow;
+	$options = get_option( 'slt_cf_options' );
 
 	// Notices to output?
 	$slt_cf_admin_notices = array();
+
+	// Check which relevant version warnings haven't been seen yet
+	if ( ( $version_warnings_json = file_get_contents( plugin_dir_path( __FILE__ ) . 'slt-cf-version-warnings.json' ) ) !== false ) {
+		$version_warnings = json_decode( $version_warnings_json, true );
+		if ( ! empty( $version_warnings ) ) {
+			foreach ( $version_warnings as $version => $warning ) {
+				$warning_label = "Developer's Custom Fields " . $version;
+				// Make sure the notice hasn't already been dismissed
+				// And that warning is for a version less than or equal to current version
+				if (	( empty( $options['dismissed_notices'] ) || ! is_array( $options['dismissed_notices'] ) || ! in_array( sanitize_title( $warning_label ), $options['dismissed_notices'] ) ) &&
+						version_compare( $version, SLT_CF_VERSION, '<=' )
+				) {
+					$slt_cf_admin_notices[] = array(
+						'label'		=> $warning_label,
+						'text'		=> $warning,
+					);
+				}
+			}
+		}
+	}
 
 	// Determine some paths
 	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) {
@@ -116,10 +137,22 @@ function slt_cf_login_enqueue_scripts() {
  * @return	void
  */
 function slt_cf_admin_enqueue_scripts( $hook ) {
-	global $pagenow;
+	global $pagenow, $slt_cf_admin_notices;
 	$screen = get_current_screen();
 	$edit_screen = in_array( $screen->base, array( 'post', 'user-edit', 'profile' ) );
 	//echo '<pre>'; print_r( $screen ); echo '</pre>'; exit;
+
+	// Global stuff
+	$script_vars = array( 'ajaxurl' => admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL ) );
+	// Nonces for dismissal of notices
+	if ( $slt_cf_admin_notices ) {
+		foreach ( $slt_cf_admin_notices as $notice ) {
+			$script_vars[ 'notice_nonce_' . sanitize_title( $notice['label'] ) ] = wp_create_nonce( 'notice_dismiss_' . sanitize_title( $notice['label'] ) );
+		}
+	}
+	wp_localize_script( 'slt-cf-scripts', 'slt_custom_fields', $script_vars );
+	wp_enqueue_script( 'slt-cf-scripts' );
+	wp_enqueue_style( 'slt-cf-styles' );
 
 	// Check for an edit screen
 	// Also, for now include media uploader scripts for all "Appearance" and "Settings" pages,
@@ -127,13 +160,6 @@ function slt_cf_admin_enqueue_scripts( $hook ) {
 	if ( $edit_screen || in_array( $pagenow, array( 'themes.php', 'options-general.php' ) ) ) {
 
 		if ( $edit_screen ) {
-
-			// Global scripts and styles
-			wp_localize_script( 'slt-cf-scripts', 'slt_custom_fields', array(
-					'ajaxurl'	=> admin_url( 'admin-ajax.php', SLT_CF_REQUEST_PROTOCOL )
-			));
-			wp_enqueue_script( 'slt-cf-scripts' );
-			wp_enqueue_style( 'slt-cf-styles' );
 
 			// Colorpicker
 			/*
