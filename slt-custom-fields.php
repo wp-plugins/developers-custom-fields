@@ -9,7 +9,7 @@ Plugin Name: Developer's Custom Fields
 Plugin URI: http://wordpress.org/extend/plugins/developers-custom-fields/
 Description: Provides theme developers with tools for managing custom fields.
 Author: Steve Taylor
-Version: 1.2.2
+Version: 1.3
 Author URI: http://sltaylor.co.uk
 License: GPLv2
 Text Domain: slt-custom-fields
@@ -50,7 +50,7 @@ define( 'SLT_CF_TEXT_DOMAIN', 'slt-custom-fields' );
 define( 'SLT_CF_TITLE', "Developer's Custom Fields" );
 define( 'SLT_CF_NO_OPTIONS', __( 'No options to choose from', SLT_CF_TEXT_DOMAIN ) );
 define( 'SLT_CF_REQUEST_PROTOCOL', isset( $_SERVER[ 'HTTPS' ] ) ? 'https://' : 'http://' );
-define( 'SLT_CF_VERSION', '1.2.2' );
+define( 'SLT_CF_VERSION', '1.3' );
 define( 'SLT_CF_PRIMARY_FILE_PATH', plugin_basename( __FILE__ ) );
 $slt_custom_fields = array();
 $slt_custom_fields['prefix'] = '_slt_';
@@ -142,6 +142,7 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 	***************************************************************************************/
 	add_action( 'add_meta_boxes', 'slt_cf_display_post_attachment', 10, 2 );
 	add_action( 'do_meta_boxes', 'slt_cf_remove_default_meta_box', 1, 3 );
+	add_action( 'user_new_form', 'slt_cf_display_user', 12, 1 );
 	add_action( 'show_user_profile', 'slt_cf_display_user', 12, 1 );
 	add_action( 'edit_user_profile', 'slt_cf_display_user', 12, 1 );
 	add_action( 'register_form', 'slt_cf_display_user', 12 );
@@ -173,10 +174,12 @@ if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
 		$user_role = 'registration';
 		$user_id = null;
 		if ( ! empty( $user ) ) {
-			// Editing a profile, not registering a new user
-			$user_roles = $user->roles;
-			$user_role = array_shift( $user_roles );
-			$user_id = $user->ID;
+			if ( $user != 'add-new-user' ) {
+				// Editing a profile, not registering a new user
+				$user_roles = $user->roles;
+				$user_role = array_shift( $user_roles );
+				$user_id = $user->ID;
+			}
 		}
 		slt_cf_init_fields( 'user', $user_role, $user_id );
 		if ( count( $slt_custom_fields['boxes'] ) ) {
