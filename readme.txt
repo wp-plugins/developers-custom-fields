@@ -3,8 +3,8 @@ Contributors: gyrus, adriantoll, saurabhshukla
 Donate link: http://www.babyloniantimes.co.uk/index.php?page=donate
 Tags: admin, administration, custom, meta, page, pages, post, posts, attachments, custom fields, form, user, profile
 Requires at least: 3.5
-Tested up to: 4.2.2
-Stable tag: 1.2.2
+Tested up to: 4.2.3
+Stable tag: 1.3
 
 Provides developers with powerful and flexible tools for managing post and user custom fields.
 
@@ -96,6 +96,7 @@ Please raise any issues via [GitHub](https://github.com/gyrus/WordPress-Develope
 * `group_by_post_type` now includes option group label even if there's only one post type in the options
 * Changed `location_marker` field parameter to accept integers, to control how many markers can be set (default is one)
 * Google Maps JavaScript: Reworked code for more efficiency, prevent addition of more markers to a map than set in `location_marker`, variable instructions based on maximum number of markers, geocode moves single map marker (as in previous single-marker releases) or adds new markers on maps with multiple markers
+* Fix to enqueue `jquery-ui-autocomplete` even if Use Google Libraries is present
 
 = 1.2.2 =
 * Changed admin notices so they only show for admins
